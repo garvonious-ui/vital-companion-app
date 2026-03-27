@@ -1,0 +1,1 @@
+Mid-session checkpoint. Save current progress to @docs/changelog.md. Check off any completed items in @docs/build-plan.md. Note any files created or modified. Summarize where we are so if context is lost we can resume.

@@ -1,0 +1,1 @@
+Wrapping up session. List everything built or changed. Update @docs/build-plan.md checkboxes. Add dated entry to @docs/changelog.md with what was built, decisions made, bugs found, current status. Give me a summary for next session.

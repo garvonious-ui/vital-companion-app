@@ -1,0 +1,1 @@
+Starting a new session. Read @docs/build-plan.md and show me the next unchecked items. Read @docs/changelog.md and show me what was done last session. Tell me what we should work on next.

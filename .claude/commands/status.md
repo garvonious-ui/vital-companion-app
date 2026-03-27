@@ -1,0 +1,1 @@
+Show project status. Read @docs/build-plan.md and show completion percentage per phase. Show last 3 changelog entries. List any TODO comments in codebase.

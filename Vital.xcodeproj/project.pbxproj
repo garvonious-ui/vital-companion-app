@@ -1,0 +1,397 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0066661C04BC58EDD9FDD80C /* SyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 419049B12A08DD535DF23CBC /* SyncService.swift */; };
+		21650B63683E26C56D952CDF /* VitalApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75F944990025E5997A5F0847 /* VitalApp.swift */; };
+		2C8B787BBDB5CA3499CC8F45 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A505619541FE752606DD517 /* AuthService.swift */; };
+		306C873F89DB17082AAEF7DB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86AC6E545186B05588923B37 /* ContentView.swift */; };
+		61B1EE2C30CD7785928F53FA /* HealthData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CA0976C5B54CDAB62C9964 /* HealthData.swift */; };
+		664BF915E1E36D770A850E28 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D62018416CAAA49C7E9D937 /* SettingsView.swift */; };
+		72BE40C3C30A9684A7C89300 /* HealthKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBF73ED4E98DCD72ABD704F1 /* HealthKitService.swift */; };
+		7EC8510CF896AD0ABE65028E /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 912219716956E7D281B60D89 /* Supabase */; };
+		A488921DE71D81B872E0038A /* PermissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B3EDAE295BB5003567B7CF /* PermissionsView.swift */; };
+		C691307B8AC193BFA5D584C6 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF92559B707E7D4262FDC303 /* Config.swift */; };
+		EB251EBF97EFDAADDA19C673 /* SyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB14AFD38B7C66C7EC36CFF4 /* SyncStatusView.swift */; };
+		F8EF78F636AB968A0C5C2141 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B0D139DCAABA4FF1454DD9E /* LoginView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		269D5C7E269BC001761E3170 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		2D62018416CAAA49C7E9D937 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		419049B12A08DD535DF23CBC /* SyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncService.swift; sourceTree = "<group>"; };
+		501DF9AE721A2A5A26C9F350 /* Vital.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Vital.entitlements; sourceTree = "<group>"; };
+		51CA0976C5B54CDAB62C9964 /* HealthData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthData.swift; sourceTree = "<group>"; };
+		533791F1F8F3F49849EED2E9 /* Vital.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Vital.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		75F944990025E5997A5F0847 /* VitalApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VitalApp.swift; sourceTree = "<group>"; };
+		7A505619541FE752606DD517 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
+		86AC6E545186B05588923B37 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		9B0D139DCAABA4FF1454DD9E /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		A9B3EDAE295BB5003567B7CF /* PermissionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsView.swift; sourceTree = "<group>"; };
+		CBF73ED4E98DCD72ABD704F1 /* HealthKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitService.swift; sourceTree = "<group>"; };
+		EB14AFD38B7C66C7EC36CFF4 /* SyncStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusView.swift; sourceTree = "<group>"; };
+		EF92559B707E7D4262FDC303 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2987C7FDCAF82BCD6FE38D15 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7EC8510CF896AD0ABE65028E /* Supabase in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4CCDE0020F6F99A10E56CB3D /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				51CA0976C5B54CDAB62C9964 /* HealthData.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		69DA0D0AB5D4A39B1C289E6A /* Vital */ = {
+			isa = PBXGroup;
+			children = (
+				EF92559B707E7D4262FDC303 /* Config.swift */,
+				269D5C7E269BC001761E3170 /* Info.plist */,
+				501DF9AE721A2A5A26C9F350 /* Vital.entitlements */,
+				75F944990025E5997A5F0847 /* VitalApp.swift */,
+				4CCDE0020F6F99A10E56CB3D /* Models */,
+				7377E78FCD7E9D8CE5B07091 /* Services */,
+				8D2C624B671E2FF18B4F1C7D /* Views */,
+			);
+			path = Vital;
+			sourceTree = "<group>";
+		};
+		6C5F16337B7BD42966EA0FF3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				533791F1F8F3F49849EED2E9 /* Vital.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		7377E78FCD7E9D8CE5B07091 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				7A505619541FE752606DD517 /* AuthService.swift */,
+				CBF73ED4E98DCD72ABD704F1 /* HealthKitService.swift */,
+				419049B12A08DD535DF23CBC /* SyncService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		8D2C624B671E2FF18B4F1C7D /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				86AC6E545186B05588923B37 /* ContentView.swift */,
+				9B0D139DCAABA4FF1454DD9E /* LoginView.swift */,
+				A9B3EDAE295BB5003567B7CF /* PermissionsView.swift */,
+				2D62018416CAAA49C7E9D937 /* SettingsView.swift */,
+				EB14AFD38B7C66C7EC36CFF4 /* SyncStatusView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		CB88CC1D8F8ABA595084C46C = {
+			isa = PBXGroup;
+			children = (
+				69DA0D0AB5D4A39B1C289E6A /* Vital */,
+				6C5F16337B7BD42966EA0FF3 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		1820B6FC800E8BDC6ED21986 /* Vital */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8A002BC5BA9E34327A7AE2CA /* Build configuration list for PBXNativeTarget "Vital" */;
+			buildPhases = (
+				3C30289B3BD64E1F6A5AC12F /* Sources */,
+				2987C7FDCAF82BCD6FE38D15 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Vital;
+			packageProductDependencies = (
+				912219716956E7D281B60D89 /* Supabase */,
+			);
+			productName = Vital;
+			productReference = 533791F1F8F3F49849EED2E9 /* Vital.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4E093F5583ED5A7AACA928D4 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					1820B6FC800E8BDC6ED21986 = {
+						DevelopmentTeam = "";
+					};
+				};
+			};
+			buildConfigurationList = A1F3E2A40935B537D89BC59B /* Build configuration list for PBXProject "Vital" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = CB88CC1D8F8ABA595084C46C;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AFDD7CB1D23721E6A64FF501 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 6C5F16337B7BD42966EA0FF3 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				1820B6FC800E8BDC6ED21986 /* Vital */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3C30289B3BD64E1F6A5AC12F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2C8B787BBDB5CA3499CC8F45 /* AuthService.swift in Sources */,
+				C691307B8AC193BFA5D584C6 /* Config.swift in Sources */,
+				306C873F89DB17082AAEF7DB /* ContentView.swift in Sources */,
+				61B1EE2C30CD7785928F53FA /* HealthData.swift in Sources */,
+				72BE40C3C30A9684A7C89300 /* HealthKitService.swift in Sources */,
+				F8EF78F636AB968A0C5C2141 /* LoginView.swift in Sources */,
+				A488921DE71D81B872E0038A /* PermissionsView.swift in Sources */,
+				664BF915E1E36D770A850E28 /* SettingsView.swift in Sources */,
+				0066661C04BC58EDD9FDD80C /* SyncService.swift in Sources */,
+				EB251EBF97EFDAADDA19C673 /* SyncStatusView.swift in Sources */,
+				21650B63683E26C56D952CDF /* VitalApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		5054818954517B4FE5CA5B3B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		886B1CC563E77E95FD6F06CA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		9F16163EC128079E77E87F92 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Vital/Vital.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = Vital/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vital.health;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BEC774E77773F549938D62AE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Vital/Vital.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = Vital/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vital.health;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		8A002BC5BA9E34327A7AE2CA /* Build configuration list for PBXNativeTarget "Vital" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9F16163EC128079E77E87F92 /* Debug */,
+				BEC774E77773F549938D62AE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A1F3E2A40935B537D89BC59B /* Build configuration list for PBXProject "Vital" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				886B1CC563E77E95FD6F06CA /* Debug */,
+				5054818954517B4FE5CA5B3B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AFDD7CB1D23721E6A64FF501 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase-community/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		912219716956E7D281B60D89 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AFDD7CB1D23721E6A64FF501 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 4E093F5583ED5A7AACA928D4 /* Project object */;
+}
