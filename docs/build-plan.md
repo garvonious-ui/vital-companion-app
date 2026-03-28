@@ -1,8 +1,8 @@
-# Build Plan — Vital Companion App
+# Build Plan — Vital iOS App
 
-## Phase 1 — Core Sync
-- [ ] Create Xcode project with HealthKit + Background Modes capabilities
-- [ ] Add Supabase Swift SDK dependency (Swift Package Manager)
+## Phase 1 — Core Sync (Complete)
+- [x] Create Xcode project with HealthKit + Background Modes capabilities
+- [x] Add Supabase Swift SDK dependency (Swift Package Manager)
 - [x] Build LoginView (email + password, matches web app dark theme)
 - [x] Build AuthService (sign in, sign out, session persistence)
 - [x] Build HealthKitService (permission request, data queries)
@@ -10,22 +10,66 @@
 - [x] Build SyncService (format data, POST to ingest API)
 - [x] Build SyncStatusView (last sync time, manual sync button, sync log)
 - [x] Wire up: login -> permissions -> auto-sync
-- [ ] Test on physical device with real Apple Watch data
+- [x] Test on physical device with real Apple Watch data
 - [x] Update backend ingest route to accept Supabase access tokens
 
-## Phase 2 — Background Sync
+## Phase 2 — Background Sync (Complete)
 - [x] Register HealthKit background delivery for all metric types
 - [x] Register BGTaskScheduler for periodic sync fallback
 - [x] Handle app lifecycle (scenePhase changes trigger sync)
 - [x] Save/restore lastSyncDate in UserDefaults
 - [ ] Test background sync (kill app, generate health data, verify sync)
 
-## Phase 3 — Polish & Ship
-- [ ] Error handling (network failures, expired tokens, HealthKit denied)
-- [ ] Retry logic with exponential backoff
-- [x] Settings view (sign out, sync frequency, debug log)
+## Phase 3 — Sync Polish (Complete)
+- [x] Error handling (network failures, expired tokens, HealthKit denied)
+- [x] Retry logic with exponential backoff
+- [x] Privacy policy page — hosted at /privacy on dashboard
+- [x] Launch screen (dark background)
+
+## Phase 4 — V1 Full App (see docs/ios-v1-spec.md for details)
+
+### Foundation
+- [ ] Build APIService.swift (generic REST client with auth)
+- [ ] Build AppModels.swift (Codable structs for all API responses)
+- [ ] Update Config.swift with apiBaseURL constant
+- [ ] Update ContentView.swift — TabView after auth+permissions
+
+### Dashboard Tab
+- [ ] DashboardView — fetch metrics + targets, card layout
+- [ ] RecoveryRing — custom Shape with score + color
+- [ ] SparklineChart — 7-day HRV/RHR mini trends (Swift Charts)
+- [ ] MacroBar — reusable progress bar component
+- [ ] Activity progress bars (steps, exercise, calories)
+- [ ] Streak counter
+- [ ] Last synced indicator
+- [ ] Pull-to-refresh triggers sync + data refresh
+
+### Nutrition Tab
+- [ ] NutritionView — date nav, macro bars, grouped meal list
+- [ ] MealFormView — add/edit sheet
+- [ ] Swipe-to-delete on meals
+- [ ] Weekly calorie chart
+
+### Workouts Tab
+- [ ] WorkoutsView — recent list + saved plans cards
+- [ ] WorkoutDetailView — stats sheet
+- [ ] QuickLogView — quick log sheet
+- [ ] WorkoutSessionView — set tracking + rest timer
+
+### More Tab
+- [ ] MoreView — navigation hub
+- [ ] SupplementsView — active stack list
+- [ ] ChatView — AI health chat with SSE streaming
+- [ ] SettingsView — expand with profile, targets, sync status, sign out
+
+### Polish & Ship
 - [ ] App icon (Vital gradient — blue to purple)
-- [ ] Launch screen (Vital logo)
-- [ ] Privacy policy page (required for HealthKit apps)
+- [ ] Tab bar icons + active states
+- [ ] Loading skeletons / pull-to-refresh animations
+- [ ] Haptic feedback on key actions
+- [ ] Handle offline state gracefully
 - [ ] App Store screenshots
+- [ ] App Store description
+- [ ] Demo account for Apple reviewer
+- [ ] Upgrade to iOS 26 SDK
 - [ ] Submit to App Store
