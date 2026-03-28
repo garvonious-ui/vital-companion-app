@@ -67,7 +67,7 @@ All routes require Bearer token auth (Supabase access token). Response format: `
 - **Supplements** — active stack list (name, type badge, dosage, timing)
 - **AI Chat** — health assistant with streaming responses (has access to real health data)
 - **Settings** — profile display, daily targets, sync status/log, sign out
-- Links to web app for Labs, Progress Photos
+- Labs, Progress Photos, Plan Generator, Onboarding — V1.1 (see below)
 
 **Data:** `GET /api/supplements`, `POST /api/ai/chat` (SSE), `GET /api/profile`
 
@@ -224,15 +224,16 @@ Vital/
 
 ---
 
-## Not in V1 (stays on web)
-- Labs page (PDF upload needs file picker UX)
-- Lab range bar visualizations
-- Progress photos (camera + storage)
-- AI workout plan questionnaire (6-step chat flow)
-- Oura/Whoop/Garmin OAuth device connections
+## V1.1 (add after core tabs ship)
+- Labs page — PDF upload via native document picker, range bar visualizations, status summary
+- Progress photos — camera/photo library capture, side-by-side comparison
+- AI workout plan generator — 6-step questionnaire chat flow
+- Onboarding wizard — sign up + profile setup entirely in-app
+- Edit profile / edit targets in Settings
 - Workout frequency heatmap, progressive overload chart
-- Onboarding wizard (use web for initial setup)
-- Edit profile / edit targets (use web Settings)
+
+## Deferred (stays on web for now)
+- Oura/Whoop/Garmin OAuth device connections (OAuth redirects are finicky in native apps, and no Oura Ring yet)
 
 ## Web App Reference
 - Repo: github.com/garvonious-ui/vital-health-dashboard
