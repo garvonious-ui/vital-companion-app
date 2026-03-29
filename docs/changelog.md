@@ -31,89 +31,90 @@ Phase 1: **Scaffolded** — needs Xcode project setup + device testing
 
 ## 2026-03-29 — Session 2
 
-### Phase 4 Foundation
-- Built `APIService.swift` — generic REST client (GET/POST/PATCH/DELETE + SSE streaming), snake_case JSON, flexible date parsing, Bearer auth via AuthService
-- Built `AppModels.swift` — all Codable structs: DailyMetric, UserTargets, Workout, WorkoutPlan, NutritionEntry, Supplement, UserProfile, ChatMessage, LibraryExercise, ExerciseSet, etc.
-- Updated `Config.swift` — added `apiBaseURL` constant (localhost debug, Vercel release)
-- Updated `ContentView.swift` — replaced SyncStatusView with MainTabView (4 tabs: Dashboard, Workouts, Nutrition, More) with dark-themed tab bar styling
-- Updated `VitalApp.swift` — wired APIService as @StateObject + .environmentObject
+### Built: Phase 4 V1 Full App (all 4 tabs)
 
-### Dashboard Tab
-- Built `DashboardView.swift` — recovery card, activity card, trends card, sync indicator, pull-to-refresh, error state, parallel API fetching
-- Built `RecoveryRing.swift` — custom animated ring Shape with score, color coding (green/amber/red), status label
-- Built `SparklineChart.swift` — 7-day mini trend using Swift Charts (LineMark + AreaMark gradient)
-- Built `MacroBar.swift` — reusable progress bar with label, current/target, color, smart number formatting
-- Recovery algorithm: HRV 50% + RHR 30% + Sleep 20% (matches web app)
+**Foundation**
+- `APIService.swift` — generic REST client (GET/POST/PATCH/DELETE/postRaw + SSE streaming), snake_case JSON, flexible date parsing, Bearer auth
+- `AppModels.swift` — 15 Codable structs: DailyMetric, UserTargets, Workout, WorkoutPlan, NutritionEntry, Supplement, UserProfile, ChatMessage, etc.
+- `Config.swift` — added `apiBaseURL` (localhost debug, Vercel release)
+- `ContentView.swift` — replaced SyncStatusView with MainTabView (4 tabs) + dark tab bar styling
+- `VitalApp.swift` — wired APIService as @StateObject + .environmentObject
+
+**Dashboard Tab**
+- `DashboardView.swift` — recovery card, activity card, 7-day trends card, sync indicator, pull-to-refresh, error state, parallel API fetching
+- `RecoveryRing.swift` — animated ring with score + color coding (green 67+, amber 34-66, red 0-33)
+- `SparklineChart.swift` — Swift Charts LineMark + AreaMark gradient for HRV/RHR
+- `MacroBar.swift` — reusable progress bar with smart number formatting
+- Recovery algorithm: HRV 50% + RHR 30% + Sleep 20%
 - Streak counter: consecutive days with workout or 9k+ steps
 
-### Files Created
+**Nutrition Tab**
+- `NutritionView.swift` — date nav, macro summary (cal/protein/carbs/fat vs targets), weekly calorie bar chart, meals grouped by type with subtotals, swipe-to-delete, empty state
+- `MealFormView.swift` — add/edit sheet, meal type chip picker, POST/PATCH
+- `DarkFieldStyle` — reusable dark text field style
+
+**Workouts Tab**
+- `WorkoutsView.swift` — saved plans with day selector buttons, recent workouts with color-coded type badges (8 types), empty state
+- `WorkoutDetailView.swift` — stats sheet (duration/calories/exercises/sets), per-set weight × reps display, notes
+- `QuickLogView.swift` — 4-column type grid, name/duration/calories/notes fields, POST
+- `WorkoutSessionView.swift` — set tracking (weight/reps input per set), rest timer overlay with countdown ring + presets (1:00/1:30/2:00/3:00), session elapsed timer, exercise navigation, progress bar, haptic feedback, save & finish, discard option
+
+**More Tab**
+- `MoreView.swift` — profile card (gradient avatar + initials), nav cards to Supplements + AI Chat, sync status, settings/web/privacy links
+- `SupplementsView.swift` — active stack grouped by timing, type emoji badges, dosage display
+- `ChatView.swift` — AI chat with SSE streaming, welcome card with suggestion chips, streaming dots, auto-scroll, stop button
+- `SettingsView.swift` — full rewrite: profile, daily targets with color dots, sync log, sign out with confirmation
+
+### Decisions Made
+- API response models are best-guess (couldn't access web app repo — not on this machine). Will need verification against live backend
+- Used `postRaw` on APIService for dynamic JSON payloads (workout sessions with nested exercises/sets) since static Codable structs would be too rigid
+- Recovery scoring uses linear interpolation: HRV 15-80ms → 0-100, RHR 80-50bpm → 0-100, Sleep 4-8h → 0-100
+- Weekly calorie chart fetches each day individually (N+1 requests) — may want to batch this if API supports date ranges
+
+### Known Issues / Risks
+- **Not compiled yet** — 15 new files need to be added to Xcode target, expect compile errors
+- **API model mismatches likely** — field names, nesting, types may differ from actual backend responses
+- **NutritionView weekly chart** makes 7 API calls (one per day) — could be slow
+- **WorkoutSessionView** uses `Timer` (not Combine/async) for rest/session timers — works but not SwiftUI-idiomatic
+- **Swipe-to-delete on meals** uses `.swipeActions` inside a `VStack`/`ForEach` — may need `List` wrapper to work properly
+
+### Files Created (15)
 - `Vital/Services/APIService.swift`
 - `Vital/Models/AppModels.swift`
-- `Vital/Views/Dashboard/DashboardView.swift`
 - `Vital/Views/Components/RecoveryRing.swift`
 - `Vital/Views/Components/SparklineChart.swift`
 - `Vital/Views/Components/MacroBar.swift`
-
-### Files Modified
-- `Vital/Config.swift` — added apiBaseURL
-- `Vital/Views/ContentView.swift` — TabView + MainTabView
-- `Vital/VitalApp.swift` — APIService wiring
-
-### Nutrition Tab
-- Built `NutritionView.swift` — date navigation (left/right arrows, tap to snap to today), macro summary card (calories, protein, carbs, fat vs targets using MacroBar), weekly calorie bar chart (Swift Charts BarMark with target line), meals grouped by type (breakfast > lunch > dinner > snack > shake) with subtotals, pull-to-refresh, empty state with "Log a Meal" CTA
-- Built `MealFormView.swift` — add/edit sheet with meal type picker (horizontal chip row), name field, calorie + macro fields, dark-themed text field style, POST for new meals, PATCH for edits
-- Swipe-to-delete on meal rows (DELETE /nutrition?id=xxx)
-- Weekly calorie chart with highlighted selected day + dashed target line
-- `DarkFieldStyle` — reusable dark text field style component
-
-### Files Created
+- `Vital/Views/Dashboard/DashboardView.swift`
 - `Vital/Views/Nutrition/NutritionView.swift`
 - `Vital/Views/Nutrition/MealFormView.swift`
-
-### Files Modified
-- `Vital/Views/ContentView.swift` — removed NutritionView placeholder
-
-### Workouts Tab
-- Built `WorkoutsView.swift` — saved plans section (plan cards with day selector buttons), recent workouts list with type badges + color-coded icons (strength/running/cycling/swimming/hiit/yoga/walking), workout type icon mapping, pull-to-refresh, empty state
-- Built `WorkoutDetailView.swift` — stats sheet with type badge, duration/calories/exercises/sets stats row, exercise list with per-set weight × reps display, notes card
-- Built `QuickLogView.swift` — 4-column type picker grid (8 workout types with icons), name/duration/calories/notes fields, POST to /api/workouts
-- Built `WorkoutSessionView.swift` — full workout session from plan day: per-exercise set tracking (weight + reps input), checkmark to complete sets, rest timer overlay with countdown ring + preset buttons (1:00/1:30/2:00/3:00), session elapsed timer, exercise navigation (previous/next), progress bar (completed/total sets), haptic feedback, save & finish (POST exercises with sets), discard option
-- Added `postRaw` method to APIService for dynamic JSON payloads
-
-### Files Created
 - `Vital/Views/Workouts/WorkoutsView.swift`
 - `Vital/Views/Workouts/WorkoutDetailView.swift`
 - `Vital/Views/Workouts/QuickLogView.swift`
 - `Vital/Views/Workouts/WorkoutSessionView.swift`
-
-### Files Modified
-- `Vital/Views/ContentView.swift` — removed WorkoutsView placeholder
-- `Vital/Services/APIService.swift` — added postRaw method
-
-### Status
-Phase 4 Foundation: **Complete**
-Phase 4 Dashboard Tab: **Complete**
-Phase 4 Nutrition Tab: **Complete**
-Phase 4 Workouts Tab: **Complete**
-### More Tab
-- Built `MoreView.swift` — profile card (avatar with gradient initials, name, email, goal), nav cards to Supplements + AI Chat, sync status indicator, settings/web dashboard/privacy links
-- Built `SupplementsView.swift` — active stack grouped by timing (morning, with meals, pre-workout, post-workout, evening, as needed), type emoji badges, dosage display, timing icons, pull-to-refresh, empty state
-- Built `ChatView.swift` — AI health chat with SSE streaming: welcome card with suggestion chips, message bubbles (user blue-tinted, assistant dark), streaming indicator dots, SSE line parser (data: JSON tokens + [DONE] sentinel), auto-scroll, stop button, multi-line input
-- Expanded `SettingsView.swift` — profile section (name, email, goal, weight), daily targets section with color dots, sync section (last sync time, frequency, recent sync log from UserDefaults), about section (version, web dashboard, privacy), sign out with confirmation dialog
-
-### Files Created
 - `Vital/Views/More/MoreView.swift`
 - `Vital/Views/More/SupplementsView.swift`
 - `Vital/Views/More/ChatView.swift`
 
-### Files Modified
-- `Vital/Views/SettingsView.swift` — full rewrite with profile, targets, sync log
-- `Vital/Views/ContentView.swift` — removed MoreView placeholder
+### Files Modified (6)
+- `Vital/Config.swift` — added apiBaseURL
+- `Vital/Views/ContentView.swift` — MainTabView, removed all placeholders
+- `Vital/Views/SettingsView.swift` — full rewrite
+- `Vital/VitalApp.swift` — APIService wiring
+- `docs/build-plan.md` — checked off all Phase 4 tab items
+- `docs/changelog.md` — this entry
 
 ### Status
-Phase 4 Foundation: **Complete**
-Phase 4 Dashboard Tab: **Complete**
-Phase 4 Nutrition Tab: **Complete**
-Phase 4 Workouts Tab: **Complete**
-Phase 4 More Tab: **Complete**
-Next: Polish & Ship
+- Phase 1-3: **Complete** (except background sync device test)
+- Phase 4 Foundation: **Complete**
+- Phase 4 Dashboard: **Complete**
+- Phase 4 Nutrition: **Complete**
+- Phase 4 Workouts: **Complete**
+- Phase 4 More: **Complete**
+- Phase 4 Polish & Ship: **Not started** (0/11)
+
+### What's Next (Session 3)
+1. Add all 15 new files to Xcode project target
+2. Build (Cmd+B) — fix compile errors
+3. Run on physical device — verify each tab loads and API calls succeed
+4. Fix API response model mismatches against live backend
+5. Start Polish phase if time permits
