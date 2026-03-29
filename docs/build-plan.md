@@ -29,38 +29,38 @@
 ## Phase 4 — V1 Full App (see docs/ios-v1-spec.md for details)
 
 ### Foundation
-- [ ] Build APIService.swift (generic REST client with auth)
-- [ ] Build AppModels.swift (Codable structs for all API responses)
-- [ ] Update Config.swift with apiBaseURL constant
-- [ ] Update ContentView.swift — TabView after auth+permissions
+- [x] Build APIService.swift (generic REST client with auth)
+- [x] Build AppModels.swift (Codable structs for all API responses)
+- [x] Update Config.swift with apiBaseURL constant
+- [x] Update ContentView.swift — TabView after auth+permissions
 
 ### Dashboard Tab
-- [ ] DashboardView — fetch metrics + targets, card layout
-- [ ] RecoveryRing — custom Shape with score + color
-- [ ] SparklineChart — 7-day HRV/RHR mini trends (Swift Charts)
-- [ ] MacroBar — reusable progress bar component
-- [ ] Activity progress bars (steps, exercise, calories)
-- [ ] Streak counter
-- [ ] Last synced indicator
-- [ ] Pull-to-refresh triggers sync + data refresh
+- [x] DashboardView — fetch metrics + targets, card layout
+- [x] RecoveryRing — custom Shape with score + color
+- [x] SparklineChart — 7-day HRV/RHR mini trends (Swift Charts)
+- [x] MacroBar — reusable progress bar component
+- [x] Activity progress bars (steps, exercise, calories)
+- [x] Streak counter
+- [x] Last synced indicator
+- [x] Pull-to-refresh triggers sync + data refresh
 
 ### Nutrition Tab
-- [ ] NutritionView — date nav, macro bars, grouped meal list
-- [ ] MealFormView — add/edit sheet
-- [ ] Swipe-to-delete on meals
-- [ ] Weekly calorie chart
+- [x] NutritionView — date nav, macro bars, grouped meal list
+- [x] MealFormView — add/edit sheet
+- [x] Swipe-to-delete on meals
+- [x] Weekly calorie chart
 
 ### Workouts Tab
-- [ ] WorkoutsView — recent list + saved plans cards
-- [ ] WorkoutDetailView — stats sheet
-- [ ] QuickLogView — quick log sheet
-- [ ] WorkoutSessionView — set tracking + rest timer
+- [x] WorkoutsView — recent list + saved plans cards
+- [x] WorkoutDetailView — stats sheet
+- [x] QuickLogView — quick log sheet
+- [x] WorkoutSessionView — set tracking + rest timer
 
 ### More Tab
-- [ ] MoreView — navigation hub
-- [ ] SupplementsView — active stack list
-- [ ] ChatView — AI health chat with SSE streaming
-- [ ] SettingsView — expand with profile, targets, sync status, sign out
+- [x] MoreView — navigation hub
+- [x] SupplementsView — active stack list
+- [x] ChatView — AI health chat with SSE streaming
+- [x] SettingsView — expand with profile, targets, sync status, sign out
 
 ### Polish & Ship
 - [ ] App icon (Vital gradient — blue to purple)

@@ -3,10 +3,19 @@ import BackgroundTasks
 
 @main
 struct VitalApp: App {
-    @StateObject private var authService = AuthService()
-    @StateObject private var healthKitService = HealthKitService()
+    @StateObject private var authService: AuthService
+    @StateObject private var healthKitService: HealthKitService
+    @StateObject private var apiService: APIService
 
     init() {
+        let auth = AuthService()
+        let healthKit = HealthKitService()
+        let api = APIService(authService: auth)
+
+        _authService = StateObject(wrappedValue: auth)
+        _healthKitService = StateObject(wrappedValue: healthKit)
+        _apiService = StateObject(wrappedValue: api)
+
         registerBackgroundTasks()
     }
 
@@ -15,6 +24,7 @@ struct VitalApp: App {
             ContentView()
                 .environmentObject(authService)
                 .environmentObject(healthKitService)
+                .environmentObject(apiService)
                 .preferredColorScheme(.dark)
         }
     }
