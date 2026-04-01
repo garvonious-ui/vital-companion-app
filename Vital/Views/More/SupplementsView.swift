@@ -1,11 +1,14 @@
 import SwiftUI
 
 struct SupplementsView: View {
-    @EnvironmentObject var apiService: APIService
+    @Environment(APIService.self) var apiService
 
     @State private var supplements: [Supplement] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var showAddForm = false
+    @State private var editingSupplement: Supplement?
+    @State private var deleteTarget: Supplement?
 
     private var activeSupplements: [Supplement] {
         supplements.filter { $0.active != false }
@@ -34,37 +37,38 @@ struct SupplementsView: View {
 
     var body: some View {
         ZStack {
-            Color(hex: 0x0A0A0C).ignoresSafeArea()
+            Brand.bg.ignoresSafeArea()
 
             if isLoading {
-                ProgressView().tint(.white)
+                ListSkeleton(count: 4)
+                    .padding(.top, 16)
             } else if let error = errorMessage {
                 VStack(spacing: 16) {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.largeTitle)
-                        .foregroundColor(Color(hex: 0xFFB547))
+                        .foregroundColor(Brand.warning)
                     Text(error)
                         .font(.subheadline)
-                        .foregroundColor(Color(hex: 0xA0A0B0))
+                        .foregroundColor(Brand.textSecondary)
                     Button("Retry") { Task { await loadData() } }
                         .font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 24)
                         .padding(.vertical, 10)
-                        .background(Color(hex: 0x00B4D8))
-                        .foregroundColor(.white)
+                        .background(Brand.accent)
+                        .foregroundColor(Brand.textPrimary)
                         .cornerRadius(10)
                 }
             } else if activeSupplements.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "pill")
                         .font(.largeTitle)
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                     Text("No supplements")
                         .font(.subheadline)
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                     Text("Add supplements on the web dashboard")
                         .font(.caption)
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                 }
             } else {
                 ScrollView {
@@ -73,7 +77,7 @@ struct SupplementsView: View {
                         HStack {
                             Text("\(activeSupplements.count) active supplements")
                                 .font(.caption)
-                                .foregroundColor(Color(hex: 0x606070))
+                                .foregroundColor(Brand.textMuted)
                             Spacer()
                         }
 
@@ -92,6 +96,40 @@ struct SupplementsView: View {
         }
         .navigationTitle("Supplements")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showAddForm = true
+                } label: {
+                    Image(systemName: "plus")
+                        .foregroundColor(Brand.accent)
+                }
+            }
+        }
+        .sheet(isPresented: $showAddForm, onDismiss: {
+            Task { await loadData() }
+        }) {
+            SupplementFormView(supplement: nil)
+        }
+        .sheet(item: $editingSupplement, onDismiss: {
+            Task { await loadData() }
+        }) { supp in
+            SupplementFormView(supplement: supp)
+        }
+        .confirmationDialog("Delete \(deleteTarget?.name ?? "supplement")?", isPresented: Binding(
+            get: { deleteTarget != nil },
+            set: { if !$0 { deleteTarget = nil } }
+        )) {
+            Button("Delete", role: .destructive) {
+                if let supp = deleteTarget {
+                    Task {
+                        await deleteSupplement(supp)
+                        deleteTarget = nil
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) { deleteTarget = nil }
+        }
         .task {
             await loadData()
         }
@@ -103,7 +141,7 @@ struct SupplementsView: View {
                 timingIcon(timing)
                 Text(timing.capitalized)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundColor(Color(hex: 0xA0A0B0))
+                    .foregroundColor(Brand.textSecondary)
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)
@@ -114,7 +152,7 @@ struct SupplementsView: View {
 
             Spacer().frame(height: 8)
         }
-        .background(Color(hex: 0x141418))
+        .background(Brand.card)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -123,54 +161,69 @@ struct SupplementsView: View {
     }
 
     private func supplementRow(_ supp: Supplement) -> some View {
+        Button {
+            editingSupplement = supp
+        } label: {
         HStack(spacing: 12) {
             // Type badge
             Text(suppTypeEmoji(supp.type))
                 .font(.title3)
                 .frame(width: 36, height: 36)
-                .background(Color(hex: 0x1C1C22))
+                .background(Brand.elevated)
                 .cornerRadius(8)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(supp.name)
                     .font(.subheadline.weight(.medium))
-                    .foregroundColor(.white)
+                    .foregroundColor(Brand.textPrimary)
 
                 HStack(spacing: 8) {
                     if let dosage = supp.dosage, !dosage.isEmpty {
                         Text(dosage)
-                            .foregroundColor(Color(hex: 0x00B4D8))
+                            .foregroundColor(Brand.accent)
                     }
                     if let type = supp.type, !type.isEmpty {
                         Text(type.capitalized)
-                            .foregroundColor(Color(hex: 0x606070))
+                            .foregroundColor(Brand.textMuted)
                     }
                 }
                 .font(.caption)
             }
 
             Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption2)
+                .foregroundColor(Brand.textMuted)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
+        } // close Button label
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                deleteTarget = supp
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
     }
 
     @ViewBuilder
     private func timingIcon(_ timing: String) -> some View {
-        let (icon, color): (String, UInt) = {
+        let (icon, color): (String, Color) = {
             switch timing.lowercased() {
-            case "morning": return ("sunrise.fill", 0xFFB547)
-            case "with meals": return ("fork.knife", 0x00B4D8)
-            case "pre-workout": return ("bolt.fill", 0xFF4757)
-            case "post-workout": return ("arrow.down.circle.fill", 0x00D68F)
-            case "evening": return ("moon.fill", 0x8B5CF6)
-            default: return ("clock", 0xA0A0B0)
+            case "morning": return ("sunrise.fill", Brand.warning)
+            case "with meals": return ("fork.knife", Brand.accent)
+            case "pre-workout": return ("bolt.fill", Brand.critical)
+            case "post-workout": return ("arrow.down.circle.fill", Brand.optimal)
+            case "evening": return ("moon.fill", Brand.secondary)
+            default: return ("clock", Brand.textSecondary)
             }
         }()
 
         Image(systemName: icon)
             .font(.caption)
-            .foregroundColor(Color(hex: color))
+            .foregroundColor(color)
     }
 
     private func suppTypeEmoji(_ type: String?) -> String {
@@ -183,6 +236,16 @@ struct SupplementsView: View {
         case "omega", "fatty acid": return "🐟"
         case "probiotic": return "🦠"
         default: return "💊"
+        }
+    }
+
+    private func deleteSupplement(_ supp: Supplement) async {
+        do {
+            let _: APIResponse<String?> = try await apiService.delete("/supplements", queryItems: [URLQueryItem(name: "id", value: supp.id)])
+            supplements.removeAll { $0.id == supp.id }
+            HapticManager.success()
+        } catch {
+            // Silently fail — user can retry
         }
     }
 

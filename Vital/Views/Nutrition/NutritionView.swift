@@ -2,7 +2,8 @@ import SwiftUI
 import Charts
 
 struct NutritionView: View {
-    @EnvironmentObject var apiService: APIService
+    @Environment(APIService.self) var apiService
+    @Environment(AuthService.self) var authService
 
     @State private var selectedDate = Date()
     @State private var meals: [NutritionEntry] = []
@@ -11,6 +12,8 @@ struct NutritionView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var showMealForm = false
+    @State private var showMealScan = false
+    @State private var showAddOptions = false
     @State private var editingMeal: NutritionEntry?
 
     private let mealOrder = ["breakfast", "lunch", "dinner", "snack", "shake"]
@@ -43,7 +46,7 @@ struct NutritionView: View {
 
     private var groupedMeals: [(String, [NutritionEntry])] {
         mealOrder.compactMap { type in
-            let items = meals.filter { $0.mealType.lowercased() == type }
+            let items = meals.filter { ($0.mealType ?? "").lowercased() == type }
             return items.isEmpty ? nil : (type, items)
         }
     }
@@ -53,10 +56,16 @@ struct NutritionView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: 0x0A0A0C).ignoresSafeArea()
+                Brand.bg.ignoresSafeArea()
 
                 if isLoading {
-                    ProgressView().tint(.white)
+                    VStack(spacing: 16) {
+                        SkeletonCard(height: 50)
+                        SkeletonCard(height: 100)
+                        ListSkeleton(count: 3)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
                 } else if let error = errorMessage {
                     errorView(error)
                 } else {
@@ -82,12 +91,17 @@ struct NutritionView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         editingMeal = nil
-                        showMealForm = true
+                        showAddOptions = true
                     } label: {
                         Image(systemName: "plus")
-                            .foregroundColor(Color(hex: 0x00B4D8))
+                            .foregroundColor(Brand.accent)
                     }
                 }
+            }
+            .confirmationDialog("Log Meal", isPresented: $showAddOptions) {
+                Button("📸 Scan Meal Photo") { showMealScan = true }
+                Button("✏️ Log Manually") { showMealForm = true }
+                Button("Cancel", role: .cancel) {}
             }
             .sheet(isPresented: $showMealForm, onDismiss: {
                 Task { await loadData() }
@@ -96,6 +110,13 @@ struct NutritionView: View {
                     date: dateString,
                     editingMeal: editingMeal
                 )
+            }
+            .sheet(isPresented: $showMealScan, onDismiss: {
+                Task { await loadData() }
+            }) {
+                MealAnalysisView(authService: authService) {
+                    Task { await loadData() }
+                }
             }
             .task {
                 await loadData()
@@ -115,7 +136,7 @@ struct NutritionView: View {
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.body.weight(.semibold))
-                    .foregroundColor(Color(hex: 0xA0A0B0))
+                    .foregroundColor(Brand.textSecondary)
                     .frame(width: 36, height: 36)
             }
 
@@ -124,10 +145,10 @@ struct NutritionView: View {
             VStack(spacing: 2) {
                 Text(isToday ? "Today" : selectedDate.formatted(.dateTime.weekday(.wide)))
                     .font(.subheadline.weight(.semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Brand.textPrimary)
                 Text(selectedDate.formatted(.dateTime.month().day()))
                     .font(.caption)
-                    .foregroundColor(Color(hex: 0x606070))
+                    .foregroundColor(Brand.textMuted)
             }
             .onTapGesture {
                 selectedDate = Date()
@@ -140,7 +161,7 @@ struct NutritionView: View {
             } label: {
                 Image(systemName: "chevron.right")
                     .font(.body.weight(.semibold))
-                    .foregroundColor(isToday ? Color(hex: 0x606070).opacity(0.3) : Color(hex: 0xA0A0B0))
+                    .foregroundColor(isToday ? Brand.textMuted.opacity(0.3) : Brand.textSecondary)
                     .frame(width: 36, height: 36)
             }
             .disabled(isToday)
@@ -156,7 +177,7 @@ struct NutritionView: View {
                 label: "Calories",
                 current: totalCalories,
                 target: Double(targets?.calories ?? 2500),
-                color: Color(hex: 0x00B4D8),
+                color: Brand.accent,
                 unit: "kcal"
             )
 
@@ -164,7 +185,7 @@ struct NutritionView: View {
                 label: "Protein",
                 current: totalProtein,
                 target: Double(targets?.protein ?? 180),
-                color: Color(hex: 0x00D68F),
+                color: Brand.optimal,
                 unit: "g"
             )
 
@@ -172,7 +193,7 @@ struct NutritionView: View {
                 label: "Carbs",
                 current: totalCarbs,
                 target: Double(targets?.carbs ?? 250),
-                color: Color(hex: 0xFFB547),
+                color: Brand.warning,
                 unit: "g"
             )
 
@@ -180,12 +201,12 @@ struct NutritionView: View {
                 label: "Fat",
                 current: totalFat,
                 target: Double(targets?.fat ?? 80),
-                color: Color(hex: 0x8B5CF6),
+                color: Brand.secondary,
                 unit: "g"
             )
         }
         .padding(20)
-        .background(Color(hex: 0x141418))
+        .background(Brand.card)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -199,13 +220,13 @@ struct NutritionView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("This Week")
                 .font(.subheadline.weight(.semibold))
-                .foregroundColor(Color(hex: 0xA0A0B0))
+                .foregroundColor(Brand.textSecondary)
 
             if weeklyCalories.count >= 2 {
                 Chart {
                     if let target = targets?.calories {
                         RuleMark(y: .value("Target", target))
-                            .foregroundStyle(Color(hex: 0x606070).opacity(0.5))
+                            .foregroundStyle(Brand.textMuted.opacity(0.5))
                             .lineStyle(StrokeStyle(lineWidth: 1, dash: [4]))
                     }
 
@@ -216,8 +237,8 @@ struct NutritionView: View {
                         )
                         .foregroundStyle(
                             day.label == dayLabel(selectedDate)
-                                ? Color(hex: 0x00B4D8)
-                                : Color(hex: 0x00B4D8).opacity(0.4)
+                                ? Brand.accent
+                                : Brand.accent.opacity(0.4)
                         )
                         .cornerRadius(4)
                     }
@@ -228,7 +249,7 @@ struct NutritionView: View {
                             if let v = value.as(Int.self) {
                                 Text("\(v)")
                                     .font(.caption2)
-                                    .foregroundColor(Color(hex: 0x606070))
+                                    .foregroundColor(Brand.textMuted)
                             }
                         }
                     }
@@ -239,7 +260,7 @@ struct NutritionView: View {
                             if let v = value.as(String.self) {
                                 Text(v)
                                     .font(.caption2)
-                                    .foregroundColor(Color(hex: 0x606070))
+                                    .foregroundColor(Brand.textMuted)
                             }
                         }
                     }
@@ -250,14 +271,14 @@ struct NutritionView: View {
                     Spacer()
                     Text("Log meals to see your weekly trend")
                         .font(.caption)
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                     Spacer()
                 }
                 .frame(height: 80)
             }
         }
         .padding(20)
-        .background(Color(hex: 0x141418))
+        .background(Brand.card)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -273,10 +294,10 @@ struct NutritionView: View {
                 VStack(spacing: 12) {
                     Image(systemName: "fork.knife")
                         .font(.title2)
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                     Text("No meals logged")
                         .font(.subheadline)
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                     Button {
                         editingMeal = nil
                         showMealForm = true
@@ -285,14 +306,14 @@ struct NutritionView: View {
                             .font(.subheadline.weight(.semibold))
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
-                            .background(Color(hex: 0x00B4D8))
-                            .foregroundColor(.white)
+                            .background(Brand.accent)
+                            .foregroundColor(Brand.textPrimary)
                             .cornerRadius(10)
                     }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
-                .background(Color(hex: 0x141418))
+                .background(Brand.card)
                 .cornerRadius(16)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
@@ -313,7 +334,7 @@ struct NutritionView: View {
                 mealTypeIcon(type)
                 Text(type.capitalized)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Brand.textPrimary)
 
                 Spacer()
 
@@ -321,7 +342,7 @@ struct NutritionView: View {
                 Text("\(subtotal) kcal")
                     .font(.caption.weight(.medium))
                     .monospacedDigit()
-                    .foregroundColor(Color(hex: 0xA0A0B0))
+                    .foregroundColor(Brand.textSecondary)
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)
@@ -329,11 +350,16 @@ struct NutritionView: View {
             // Items
             ForEach(items) { meal in
                 mealRow(meal)
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.95)),
+                        removal: .opacity.combined(with: .scale(scale: 0.95))
+                    ))
             }
+            .animation(.easeInOut(duration: 0.25), value: items.map(\.id))
 
             Spacer().frame(height: 8)
         }
-        .background(Color(hex: 0x141418))
+        .background(Brand.card)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -346,24 +372,24 @@ struct NutritionView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(meal.name)
                     .font(.subheadline)
-                    .foregroundColor(.white)
+                    .foregroundColor(Brand.textPrimary)
 
                 HStack(spacing: 8) {
                     if let cal = meal.calories {
                         Text("\(cal) kcal")
-                            .foregroundColor(Color(hex: 0x00B4D8))
+                            .foregroundColor(Brand.accent)
                     }
                     if let p = meal.protein {
                         Text("\(Int(p))P")
-                            .foregroundColor(Color(hex: 0x00D68F))
+                            .foregroundColor(Brand.optimal)
                     }
                     if let c = meal.carbs {
                         Text("\(Int(c))C")
-                            .foregroundColor(Color(hex: 0xFFB547))
+                            .foregroundColor(Brand.warning)
                     }
                     if let f = meal.fat {
                         Text("\(Int(f))F")
-                            .foregroundColor(Color(hex: 0x8B5CF6))
+                            .foregroundColor(Brand.secondary)
                     }
                 }
                 .font(.caption2.weight(.medium))
@@ -374,7 +400,7 @@ struct NutritionView: View {
 
             Image(systemName: "chevron.right")
                 .font(.caption2)
-                .foregroundColor(Color(hex: 0x606070))
+                .foregroundColor(Brand.textMuted)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
@@ -394,20 +420,20 @@ struct NutritionView: View {
 
     @ViewBuilder
     private func mealTypeIcon(_ type: String) -> some View {
-        let (icon, color): (String, UInt) = {
+        let (icon, color): (String, Color) = {
             switch type.lowercased() {
-            case "breakfast": return ("sunrise.fill", 0xFFB547)
-            case "lunch": return ("sun.max.fill", 0x00B4D8)
-            case "dinner": return ("moon.fill", 0x8B5CF6)
-            case "snack": return ("leaf.fill", 0x00D68F)
-            case "shake": return ("cup.and.saucer.fill", 0x00B4D8)
-            default: return ("fork.knife", 0xA0A0B0)
+            case "breakfast": return ("sunrise.fill", Brand.warning)
+            case "lunch": return ("sun.max.fill", Brand.accent)
+            case "dinner": return ("moon.fill", Brand.secondary)
+            case "snack": return ("leaf.fill", Brand.optimal)
+            case "shake": return ("cup.and.saucer.fill", Brand.accent)
+            default: return ("fork.knife", Brand.textSecondary)
             }
         }()
 
         Image(systemName: icon)
             .font(.caption)
-            .foregroundColor(Color(hex: color))
+            .foregroundColor(color)
     }
 
     // MARK: - Error View
@@ -416,10 +442,10 @@ struct NutritionView: View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.largeTitle)
-                .foregroundColor(Color(hex: 0xFFB547))
+                .foregroundColor(Brand.warning)
             Text(message)
                 .font(.subheadline)
-                .foregroundColor(Color(hex: 0xA0A0B0))
+                .foregroundColor(Brand.textSecondary)
                 .multilineTextAlignment(.center)
             Button("Retry") {
                 Task { await loadData() }
@@ -427,8 +453,8 @@ struct NutritionView: View {
             .font(.subheadline.weight(.semibold))
             .padding(.horizontal, 24)
             .padding(.vertical, 10)
-            .background(Color(hex: 0x00B4D8))
-            .foregroundColor(.white)
+            .background(Brand.accent)
+            .foregroundColor(Brand.textPrimary)
             .cornerRadius(10)
         }
         .padding()
@@ -491,7 +517,9 @@ struct NutritionView: View {
         do {
             let _: APIResponse<String?> = try await apiService.delete("/nutrition", queryItems: [URLQueryItem(name: "id", value: meal.id)])
             meals.removeAll { $0.id == meal.id }
+            HapticManager.medium()
         } catch {
+            HapticManager.error()
             errorMessage = error.localizedDescription
         }
     }

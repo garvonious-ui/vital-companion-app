@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct WorkoutsView: View {
-    @EnvironmentObject var apiService: APIService
+    @Environment(APIService.self) var apiService
 
     @State private var workouts: [Workout] = []
     @State private var plans: [WorkoutPlan] = []
@@ -15,12 +15,21 @@ struct WorkoutsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: 0x0A0A0C).ignoresSafeArea()
+                Brand.bg.ignoresSafeArea()
 
                 if isLoading {
-                    ProgressView().tint(.white)
+                    ListSkeleton(count: 4)
+                        .padding(.top, 16)
                 } else if let error = errorMessage {
                     errorView(error)
+                } else if workouts.isEmpty && plans.isEmpty {
+                    EmptyStateView(
+                        icon: "dumbbell",
+                        title: "No workouts yet",
+                        subtitle: "Log your first workout to start tracking progress",
+                        buttonTitle: "Quick Log",
+                        buttonAction: { showQuickLog = true }
+                    )
                 } else {
                     ScrollView {
                         VStack(spacing: 16) {
@@ -46,7 +55,7 @@ struct WorkoutsView: View {
                         showQuickLog = true
                     } label: {
                         Image(systemName: "plus")
-                            .foregroundColor(Color(hex: 0x00B4D8))
+                            .foregroundColor(Brand.accent)
                     }
                 }
             }
@@ -75,7 +84,7 @@ struct WorkoutsView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Your Plans")
                 .font(.subheadline.weight(.semibold))
-                .foregroundColor(Color(hex: 0xA0A0B0))
+                .foregroundColor(Brand.textSecondary)
 
             ForEach(plans) { plan in
                 planCard(plan)
@@ -91,10 +100,10 @@ struct WorkoutsView: View {
                         .font(.headline)
                         .foregroundColor(.white)
 
-                    if let daysPerWeek = plan.daysPerWeek {
-                        Text("\(daysPerWeek) days/week")
+                    if let days = plan.planData?.days {
+                        Text("\(days.filter { !($0.isRest ?? false) }.count) days/week")
                             .font(.caption)
-                            .foregroundColor(Color(hex: 0xA0A0B0))
+                            .foregroundColor(Brand.textSecondary)
                     }
                 }
 
@@ -102,18 +111,18 @@ struct WorkoutsView: View {
 
                 Image(systemName: "figure.strengthtraining.traditional")
                     .font(.title2)
-                    .foregroundColor(Color(hex: 0x8B5CF6).opacity(0.6))
+                    .foregroundColor(Brand.secondary.opacity(0.6))
             }
 
-            if let description = plan.description {
-                Text(description)
+            if let notes = plan.planData?.notes, !notes.isEmpty {
+                Text(notes)
                     .font(.caption)
-                    .foregroundColor(Color(hex: 0x606070))
+                    .foregroundColor(Brand.textMuted)
                     .lineLimit(2)
             }
 
             // Day buttons
-            if let days = plan.days, !days.isEmpty {
+            if let days = plan.planData?.days, !days.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(days) { day in
@@ -130,8 +139,8 @@ struct WorkoutsView: View {
                                 }
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 8)
-                                .background(Color(hex: 0x8B5CF6).opacity(0.15))
-                                .foregroundColor(Color(hex: 0x8B5CF6))
+                                .background(Brand.secondary.opacity(0.15))
+                                .foregroundColor(Brand.secondary)
                                 .cornerRadius(8)
                             }
                         }
@@ -140,7 +149,7 @@ struct WorkoutsView: View {
             }
         }
         .padding(16)
-        .background(Color(hex: 0x141418))
+        .background(Brand.card)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -155,7 +164,7 @@ struct WorkoutsView: View {
             HStack {
                 Text("Recent Workouts")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundColor(Color(hex: 0xA0A0B0))
+                    .foregroundColor(Brand.textSecondary)
                 Spacer()
             }
 
@@ -163,10 +172,10 @@ struct WorkoutsView: View {
                 VStack(spacing: 12) {
                     Image(systemName: "dumbbell")
                         .font(.title2)
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                     Text("No workouts yet")
                         .font(.subheadline)
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                     Button {
                         showQuickLog = true
                     } label: {
@@ -174,14 +183,14 @@ struct WorkoutsView: View {
                             .font(.subheadline.weight(.semibold))
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
-                            .background(Color(hex: 0x00B4D8))
+                            .background(Brand.accent)
                             .foregroundColor(.white)
                             .cornerRadius(10)
                     }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
-                .background(Color(hex: 0x141418))
+                .background(Brand.card)
                 .cornerRadius(16)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
@@ -190,7 +199,9 @@ struct WorkoutsView: View {
             } else {
                 ForEach(workouts) { workout in
                     workoutRow(workout)
+                        .transition(.opacity.combined(with: .move(edge: .trailing)))
                 }
+                .animation(.easeOut(duration: 0.3), value: workouts.map(\.id))
             }
         }
     }
@@ -201,13 +212,13 @@ struct WorkoutsView: View {
         } label: {
             HStack(spacing: 12) {
                 // Type badge
-                workoutTypeIcon(workout.type)
+                workoutTypeIcon(workout.type ?? "Other")
                     .frame(width: 40, height: 40)
-                    .background(workoutTypeColor(workout.type).opacity(0.15))
+                    .background(workoutTypeColor(workout.type ?? "Other").opacity(0.15))
                     .cornerRadius(10)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(workout.name ?? workout.type.capitalized)
+                    Text(workout.name ?? (workout.type ?? "Workout").capitalized)
                         .font(.subheadline.weight(.semibold))
                         .foregroundColor(.white)
 
@@ -220,7 +231,7 @@ struct WorkoutsView: View {
                         }
                     }
                     .font(.caption)
-                    .foregroundColor(Color(hex: 0xA0A0B0))
+                    .foregroundColor(Brand.textSecondary)
                 }
 
                 Spacer()
@@ -228,15 +239,15 @@ struct WorkoutsView: View {
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(formatWorkoutDate(workout.date))
                         .font(.caption2)
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
 
                     Image(systemName: "chevron.right")
                         .font(.caption2)
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                 }
             }
             .padding(14)
-            .background(Color(hex: 0x141418))
+            .background(Brand.card)
             .cornerRadius(14)
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
@@ -276,15 +287,15 @@ struct WorkoutsView: View {
     private func workoutTypeColor(_ type: String) -> Color {
         switch type.lowercased() {
         case "strength", "weight training", "traditional strength training":
-            return Color(hex: 0x8B5CF6)
+            return Brand.secondary
         case "running", "run":
-            return Color(hex: 0x00D68F)
+            return Brand.optimal
         case "cycling", "bike":
-            return Color(hex: 0x00B4D8)
+            return Brand.accent
         case "hiit":
-            return Color(hex: 0xFF4757)
+            return Brand.critical
         default:
-            return Color(hex: 0xFFB547)
+            return Brand.warning
         }
     }
 
@@ -294,10 +305,10 @@ struct WorkoutsView: View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.largeTitle)
-                .foregroundColor(Color(hex: 0xFFB547))
+                .foregroundColor(Brand.warning)
             Text(message)
                 .font(.subheadline)
-                .foregroundColor(Color(hex: 0xA0A0B0))
+                .foregroundColor(Brand.textSecondary)
                 .multilineTextAlignment(.center)
             Button("Retry") {
                 Task { await loadData() }
@@ -305,7 +316,7 @@ struct WorkoutsView: View {
             .font(.subheadline.weight(.semibold))
             .padding(.horizontal, 24)
             .padding(.vertical, 10)
-            .background(Color(hex: 0x00B4D8))
+            .background(Brand.accent)
             .foregroundColor(.white)
             .cornerRadius(10)
         }

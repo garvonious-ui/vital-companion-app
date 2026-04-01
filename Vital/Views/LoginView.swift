@@ -1,14 +1,15 @@
 import SwiftUI
 
 struct LoginView: View {
-    @EnvironmentObject var authService: AuthService
+    @Environment(AuthService.self) var authService
     @State private var email = ""
     @State private var password = ""
     @State private var isLoading = false
+    @State private var isSignUp = false
 
     var body: some View {
         ZStack {
-            Color(hex: 0x0A0A0C).ignoresSafeArea()
+            Brand.bg.ignoresSafeArea()
 
             VStack(spacing: 32) {
                 Spacer()
@@ -19,7 +20,7 @@ struct LoginView: View {
                         Circle()
                             .fill(
                                 LinearGradient(
-                                    colors: [Color(hex: 0x00B4D8), Color(hex: 0x8B5CF6)],
+                                    colors: [Brand.accent, Brand.secondary],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
@@ -27,14 +28,14 @@ struct LoginView: View {
                             .frame(width: 64, height: 64)
                         Text("V")
                             .font(.system(size: 28, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundColor(Brand.textPrimary)
                     }
                     Text("Vital")
                         .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.white)
-                    Text("Sign in to sync your health data")
+                        .foregroundColor(Brand.textPrimary)
+                    Text(isSignUp ? "Create your account" : "Sign in to sync your health data")
                         .font(.subheadline)
-                        .foregroundColor(Color(hex: 0xA0A0B0))
+                        .foregroundColor(Brand.textSecondary)
                 }
 
                 // Form
@@ -52,14 +53,18 @@ struct LoginView: View {
                     if let error = authService.errorMessage {
                         Text(error)
                             .font(.caption)
-                            .foregroundColor(Color(hex: 0xFF4757))
+                            .foregroundColor(Brand.critical)
                             .multilineTextAlignment(.center)
                     }
 
                     Button {
                         isLoading = true
                         Task {
-                            await authService.signIn(email: email, password: password)
+                            if isSignUp {
+                                await authService.signUp(email: email, password: password)
+                            } else {
+                                await authService.signIn(email: email, password: password)
+                            }
                             isLoading = false
                         }
                     } label: {
@@ -69,13 +74,13 @@ struct LoginView: View {
                                     .tint(.white)
                                     .scaleEffect(0.8)
                             }
-                            Text("Sign In")
+                            Text(isSignUp ? "Create Account" : "Sign In")
                                 .font(.headline)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color(hex: 0x00B4D8))
-                        .foregroundColor(.white)
+                        .background(Brand.accent)
+                        .foregroundColor(Brand.textPrimary)
                         .cornerRadius(12)
                     }
                     .disabled(email.isEmpty || password.isEmpty || isLoading)
@@ -83,7 +88,15 @@ struct LoginView: View {
                 }
                 .padding(.horizontal, 24)
 
-                Spacer()
+                Button {
+                    isSignUp.toggle()
+                    authService.errorMessage = nil
+                } label: {
+                    Text(isSignUp ? "Already have an account? **Sign In**" : "Don't have an account? **Sign Up**")
+                        .font(.subheadline)
+                        .foregroundColor(Brand.textSecondary)
+                }
+
                 Spacer()
             }
         }
@@ -94,13 +107,13 @@ struct VitalTextFieldStyle: TextFieldStyle {
     func _body(configuration: TextField<_Label>) -> some View {
         configuration
             .padding(14)
-            .background(Color(hex: 0x141418))
+            .background(Brand.card)
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(Color.white.opacity(0.06), lineWidth: 1)
             )
-            .foregroundColor(.white)
+            .foregroundColor(Brand.textPrimary)
             .font(.body)
     }
 }

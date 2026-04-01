@@ -1,16 +1,20 @@
 import Foundation
+import Observation
 
 @MainActor
-class SyncService: ObservableObject {
-    @Published var isSyncing = false
-    @Published var lastSyncDate: Date?
-    @Published var syncLog: [SyncLogEntry] = []
+@Observable class SyncService {
+    var isSyncing = false
+    var lastSyncDate: Date?
+    var syncLog: [SyncLogEntry] = []
 
     private let healthKitService: HealthKitService
     private let authService: AuthService
 
     private let lastSyncKey = "lastSyncDate"
     private let syncLogKey = "syncLog"
+
+    private let maxRetries = 3
+    private let baseDelay: TimeInterval = 2 // 2s, 4s, 8s
 
     init(healthKitService: HealthKitService, authService: AuthService) {
         self.healthKitService = healthKitService
@@ -19,20 +23,30 @@ class SyncService: ObservableObject {
     }
 
     func sync() async {
-        guard !isSyncing else { return }
+        guard !isSyncing else {
+            print("[Sync] Already syncing, skipping")
+            return
+        }
         isSyncing = true
         defer { isSyncing = false }
 
         guard let token = await authService.accessToken() else {
+            print("[Sync] No token — not signed in")
             addLogEntry(success: false, errorMessage: "Not signed in")
             return
         }
 
-        let since = lastSyncDate ?? Calendar.current.date(byAdding: .day, value: -Config.defaultSyncLookbackDays, to: Date())!
+        // Always query from start of day so cumulative metrics (steps, calories, exercise)
+        // contain full-day totals. Use lastSyncDate only to determine how far back to go,
+        // but round down to midnight so we never send partial-day data.
+        let lookback = lastSyncDate ?? Calendar.current.date(byAdding: .day, value: -Config.defaultSyncLookbackDays, to: Date())!
+        let since = Calendar.current.startOfDay(for: lookback)
+        print("[Sync] Starting sync from \(since), lastSyncDate: \(String(describing: lastSyncDate))")
 
         do {
             let metrics = try await healthKitService.queryMetrics(since: since)
             let workouts = try await healthKitService.queryWorkouts(since: since)
+            print("[Sync] HealthKit returned \(metrics.count) metrics, \(workouts.count) workouts")
 
             if metrics.isEmpty && workouts.isEmpty {
                 addLogEntry(metricsUpdated: 0, workoutsCreated: 0, success: true)
@@ -42,9 +56,10 @@ class SyncService: ObservableObject {
             }
 
             let payload = IngestPayload(data: IngestData(metrics: metrics, workouts: workouts))
-            let response = try await postToIngest(payload: payload, token: token)
+            let response = try await postWithRetry(payload: payload, token: token)
 
             if response.success, let summary = response.summary {
+                print("[Sync] Success — metrics: \(summary.metrics.updated + summary.metrics.created), workouts: \(summary.workouts.created)")
                 addLogEntry(
                     metricsUpdated: summary.metrics.updated + summary.metrics.created,
                     workoutsCreated: summary.workouts.created,
@@ -53,14 +68,75 @@ class SyncService: ObservableObject {
                 lastSyncDate = Date()
                 saveState()
             } else {
+                print("[Sync] API error: \(response.error ?? "Unknown")")
                 addLogEntry(success: false, errorMessage: response.error ?? "Unknown error")
             }
+        } catch let error as SyncError {
+            print("[Sync] SyncError: \(error.errorDescription ?? "?")")
+            addLogEntry(success: false, errorMessage: error.errorDescription)
+        } catch let error as URLError {
+            let message: String
+            switch error.code {
+            case .notConnectedToInternet:
+                message = "No internet connection"
+            case .timedOut:
+                message = "Request timed out"
+            case .networkConnectionLost:
+                message = "Connection lost during sync"
+            default:
+                message = "Network error: \(error.localizedDescription)"
+            }
+            addLogEntry(success: false, errorMessage: message)
         } catch {
             addLogEntry(success: false, errorMessage: error.localizedDescription)
         }
     }
 
-    // MARK: - Private
+    // MARK: - Retry Logic
+
+    private func postWithRetry(payload: IngestPayload, token: String) async throws -> IngestResponse {
+        var currentToken = token
+        var lastError: Error?
+
+        for attempt in 0..<maxRetries {
+            do {
+                return try await postToIngest(payload: payload, token: currentToken)
+            } catch SyncError.unauthorized {
+                // Try refreshing the session once
+                if attempt == 0, await authService.refreshSession(),
+                   let newToken = await authService.accessToken() {
+                    currentToken = newToken
+                    continue
+                }
+                throw SyncError.unauthorized
+            } catch let error as URLError {
+                lastError = error
+                // Don't retry on non-transient network errors
+                if error.code == .notConnectedToInternet || error.code == .cancelled {
+                    throw error
+                }
+                if attempt < maxRetries - 1 {
+                    let delay = baseDelay * pow(2, Double(attempt))
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                }
+            } catch let error as SyncError {
+                // Don't retry client errors (4xx except 401)
+                if case .serverError(let code, _) = error, code >= 500 {
+                    lastError = error
+                    if attempt < maxRetries - 1 {
+                        let delay = baseDelay * pow(2, Double(attempt))
+                        try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                    }
+                } else {
+                    throw error
+                }
+            }
+        }
+
+        throw lastError ?? SyncError.invalidResponse
+    }
+
+    // MARK: - Network
 
     private func postToIngest(payload: IngestPayload, token: String) async throws -> IngestResponse {
         var request = URLRequest(url: Config.ingestURL)
@@ -88,6 +164,8 @@ class SyncService: ObservableObject {
         return try JSONDecoder().decode(IngestResponse.self, from: data)
     }
 
+    // MARK: - Log
+
     private func addLogEntry(metricsUpdated: Int = 0, workoutsCreated: Int = 0, success: Bool, errorMessage: String? = nil) {
         let entry = SyncLogEntry(
             date: Date(),
@@ -100,6 +178,14 @@ class SyncService: ObservableObject {
         if syncLog.count > 20 { syncLog = Array(syncLog.prefix(20)) }
         saveState()
     }
+
+    func resetAndSync() async {
+        lastSyncDate = nil
+        UserDefaults.standard.removeObject(forKey: lastSyncKey)
+        await sync()
+    }
+
+    // MARK: - Persistence
 
     private func loadState() {
         if let timestamp = UserDefaults.standard.object(forKey: lastSyncKey) as? Date {

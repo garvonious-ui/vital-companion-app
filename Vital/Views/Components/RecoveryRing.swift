@@ -13,9 +13,9 @@ struct RecoveryRing: View {
 
     private var ringColor: Color {
         switch score {
-        case 67...100: return Color(hex: 0x00D68F)
-        case 34...66: return Color(hex: 0xFFB547)
-        default: return Color(hex: 0xFF4757)
+        case 67...100: return Brand.optimal
+        case 34...66: return Brand.warning
+        default: return Brand.critical
         }
     }
 
@@ -48,7 +48,7 @@ struct RecoveryRing: View {
                 Text("\(score)")
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .monospacedDigit()
-                    .foregroundColor(.white)
+                    .foregroundColor(Brand.textPrimary)
 
                 Text(statusLabel)
                     .font(.caption2.weight(.medium))
@@ -57,7 +57,7 @@ struct RecoveryRing: View {
         }
         .onAppear {
             if animateOnAppear {
-                withAnimation(.easeOut(duration: 1.0)) {
+                withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) {
                     animatedProgress = Double(score) / 100.0
                 }
             } else {
@@ -65,7 +65,7 @@ struct RecoveryRing: View {
             }
         }
         .onChange(of: score) { _, newValue in
-            withAnimation(.easeOut(duration: 0.5)) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
                 animatedProgress = Double(newValue) / 100.0
             }
         }

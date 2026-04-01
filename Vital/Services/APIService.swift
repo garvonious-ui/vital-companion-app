@@ -1,8 +1,9 @@
 import Foundation
+import Observation
 
 @MainActor
-class APIService: ObservableObject {
-    private let authService: AuthService
+@Observable class APIService {
+    let authService: AuthService
     private let session = URLSession.shared
 
     private let decoder: JSONDecoder = {
@@ -66,6 +67,12 @@ class APIService: ObservableObject {
         return try await execute(request)
     }
 
+    func patchRaw<T: Decodable>(_ path: String, jsonData: Data) async throws -> T {
+        var request = try await buildRequest(path: path, method: "PATCH")
+        request.httpBody = jsonData
+        return try await execute(request)
+    }
+
     /// POST with raw JSON data (for dynamic payloads that don't fit a static Codable struct)
     func postRaw<T: Decodable>(_ path: String, jsonData: Data) async throws -> T {
         var request = try await buildRequest(path: path, method: "POST")
@@ -102,11 +109,41 @@ class APIService: ObservableObject {
         return request
     }
 
-    private func execute<T: Decodable>(_ request: URLRequest) async throws -> T {
-        let (data, response) = try await session.data(for: request)
+    private func execute<T: Decodable>(_ request: URLRequest, retried: Bool = false) async throws -> T {
+        let data: Data
+        let response: URLResponse
+
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch let urlError as URLError {
+            switch urlError.code {
+            case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed:
+                throw APIError.offline
+            case .timedOut:
+                throw APIError.timeout
+            case .secureConnectionFailed, .serverCertificateUntrusted:
+                throw APIError.sslError
+            default:
+                throw APIError.networkError(urlError.localizedDescription)
+            }
+        }
 
         guard let http = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
+        }
+
+        if http.statusCode == 401 && !retried {
+            // Try refreshing the session and retrying once
+            print("[APIService] Got 401, attempting token refresh...")
+            let refreshed = await authService.refreshSession()
+            if refreshed {
+                let newRequest = try await buildRequest(
+                    path: request.url!.path.replacingOccurrences(of: "/api", with: ""),
+                    method: request.httpMethod ?? "GET"
+                )
+                return try await execute(newRequest, retried: true)
+            }
+            throw APIError.unauthorized
         }
 
         if http.statusCode == 401 {
@@ -128,6 +165,10 @@ enum APIError: LocalizedError {
     case unauthorized
     case invalidURL
     case invalidResponse
+    case offline
+    case timeout
+    case sslError
+    case networkError(String)
     case serverError(statusCode: Int, body: String)
 
     var errorDescription: String? {
@@ -135,7 +176,16 @@ enum APIError: LocalizedError {
         case .unauthorized: return "Session expired. Please sign in again."
         case .invalidURL: return "Invalid request URL."
         case .invalidResponse: return "Invalid response from server."
+        case .offline: return "You're offline. Check your connection and try again."
+        case .timeout: return "Request timed out. Try again."
+        case .sslError: return "Secure connection failed. Try again in a moment."
+        case .networkError(let msg): return "Network error: \(msg)"
         case .serverError(let code, _): return "Server error (\(code))."
         }
+    }
+
+    var isOffline: Bool {
+        if case .offline = self { return true }
+        return false
     }
 }

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct WorkoutSessionView: View {
-    @EnvironmentObject var apiService: APIService
+    @Environment(APIService.self) var apiService
     @Environment(\.dismiss) var dismiss
 
     let plan: WorkoutPlan
@@ -36,7 +36,7 @@ struct WorkoutSessionView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: 0x0A0A0C).ignoresSafeArea()
+                Brand.bg.ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     // Session header
@@ -68,7 +68,7 @@ struct WorkoutSessionView: View {
                     Button("End") {
                         showFinishConfirm = true
                     }
-                    .foregroundColor(Color(hex: 0xFF4757))
+                    .foregroundColor(Brand.critical)
                 }
 
                 ToolbarItem(placement: .principal) {
@@ -82,7 +82,7 @@ struct WorkoutSessionView: View {
                         Task { await saveAndFinish() }
                     }
                     .font(.body.weight(.semibold))
-                    .foregroundColor(Color(hex: 0x00D68F))
+                    .foregroundColor(Brand.optimal)
                     .disabled(isSaving)
                 }
             }
@@ -118,7 +118,7 @@ struct WorkoutSessionView: View {
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
             }
-            .foregroundColor(Color(hex: 0x00B4D8))
+            .foregroundColor(Brand.accent)
 
             Spacer()
 
@@ -126,7 +126,7 @@ struct WorkoutSessionView: View {
             Text("\(completedSets)/\(totalSets) sets")
                 .font(.caption.weight(.medium))
                 .monospacedDigit()
-                .foregroundColor(Color(hex: 0xA0A0B0))
+                .foregroundColor(Brand.textSecondary)
 
             // Mini progress bar
             GeometryReader { geo in
@@ -134,7 +134,7 @@ struct WorkoutSessionView: View {
                     Capsule()
                         .fill(Color.white.opacity(0.06))
                     Capsule()
-                        .fill(Color(hex: 0x00D68F))
+                        .fill(Brand.optimal)
                         .frame(width: geo.size.width * (totalSets > 0 ? Double(completedSets) / Double(totalSets) : 0))
                 }
             }
@@ -142,7 +142,7 @@ struct WorkoutSessionView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Color(hex: 0x141418))
+        .background(Brand.card)
     }
 
     // MARK: - Exercise Header
@@ -151,7 +151,7 @@ struct WorkoutSessionView: View {
         VStack(spacing: 4) {
             Text("Exercise \(currentExerciseIndex + 1) of \(exerciseData.count)")
                 .font(.caption)
-                .foregroundColor(Color(hex: 0x606070))
+                .foregroundColor(Brand.textMuted)
 
             Text(exercise.name)
                 .font(.title3.weight(.bold))
@@ -159,7 +159,7 @@ struct WorkoutSessionView: View {
 
             Text("\(exercise.targetSets) sets × \(exercise.targetReps)")
                 .font(.subheadline)
-                .foregroundColor(Color(hex: 0xA0A0B0))
+                .foregroundColor(Brand.textSecondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
@@ -181,7 +181,7 @@ struct WorkoutSessionView: View {
                     .frame(width: 44)
             }
             .font(.caption.weight(.medium))
-            .foregroundColor(Color(hex: 0x606070))
+            .foregroundColor(Brand.textMuted)
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
 
@@ -196,7 +196,7 @@ struct WorkoutSessionView: View {
                 }
             }
         }
-        .background(Color(hex: 0x141418))
+        .background(Brand.card)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -211,7 +211,7 @@ struct WorkoutSessionView: View {
             Text("\(setIndex + 1)")
                 .font(.subheadline.weight(.semibold))
                 .monospacedDigit()
-                .foregroundColor(set.completed ? Color(hex: 0x00D68F) : Color(hex: 0xA0A0B0))
+                .foregroundColor(set.completed ? Brand.optimal : Brand.textSecondary)
                 .frame(width: 40, alignment: .leading)
 
             // Weight input
@@ -226,7 +226,7 @@ struct WorkoutSessionView: View {
             .foregroundColor(.white)
             .padding(.vertical, 8)
             .padding(.horizontal, 8)
-            .background(Color(hex: 0x1C1C22))
+            .background(Brand.elevated)
             .cornerRadius(8)
             .frame(maxWidth: .infinity)
 
@@ -242,7 +242,7 @@ struct WorkoutSessionView: View {
             .foregroundColor(.white)
             .padding(.vertical, 8)
             .padding(.horizontal, 8)
-            .background(Color(hex: 0x1C1C22))
+            .background(Brand.elevated)
             .cornerRadius(8)
             .frame(maxWidth: .infinity)
 
@@ -261,7 +261,7 @@ struct WorkoutSessionView: View {
             } label: {
                 Image(systemName: set.completed ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
-                    .foregroundColor(set.completed ? Color(hex: 0x00D68F) : Color(hex: 0x606070))
+                    .foregroundColor(set.completed ? Brand.optimal : Brand.textMuted)
             }
             .frame(width: 44)
         }
@@ -284,8 +284,8 @@ struct WorkoutSessionView: View {
                     .font(.subheadline.weight(.medium))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color(hex: 0x1C1C22))
-                    .foregroundColor(Color(hex: 0xA0A0B0))
+                    .background(Brand.elevated)
+                    .foregroundColor(Brand.textSecondary)
                     .cornerRadius(10)
                 }
             }
@@ -301,8 +301,8 @@ struct WorkoutSessionView: View {
                     .font(.subheadline.weight(.medium))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color(hex: 0x00B4D8).opacity(0.2))
-                    .foregroundColor(Color(hex: 0x00B4D8))
+                    .background(Brand.accent.opacity(0.2))
+                    .foregroundColor(Brand.accent)
                     .cornerRadius(10)
                 }
             }
@@ -322,7 +322,7 @@ struct WorkoutSessionView: View {
             VStack(spacing: 24) {
                 Text("Rest")
                     .font(.headline)
-                    .foregroundColor(Color(hex: 0xA0A0B0))
+                    .foregroundColor(Brand.textSecondary)
 
                 // Countdown ring
                 ZStack {
@@ -331,7 +331,7 @@ struct WorkoutSessionView: View {
 
                     Circle()
                         .trim(from: 0, to: restSeconds > 0 ? Double(restRemaining) / Double(restSeconds) : 0)
-                        .stroke(Color(hex: 0x00B4D8), style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                        .stroke(Brand.accent, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                         .rotationEffect(.degrees(-90))
 
                     Text(formatTime(restRemaining))
@@ -356,8 +356,8 @@ struct WorkoutSessionView: View {
                         .font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 32)
                         .padding(.vertical, 12)
-                        .background(Color(hex: 0x1C1C22))
-                        .foregroundColor(Color(hex: 0xA0A0B0))
+                        .background(Brand.elevated)
+                        .foregroundColor(Brand.textSecondary)
                         .cornerRadius(10)
                 }
             }
@@ -375,8 +375,8 @@ struct WorkoutSessionView: View {
                 .monospacedDigit()
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(restSeconds == seconds ? Color(hex: 0x00B4D8).opacity(0.2) : Color(hex: 0x1C1C22))
-                .foregroundColor(restSeconds == seconds ? Color(hex: 0x00B4D8) : Color(hex: 0x606070))
+                .background(restSeconds == seconds ? Brand.accent.opacity(0.2) : Brand.elevated)
+                .foregroundColor(restSeconds == seconds ? Brand.accent : Brand.textMuted)
                 .cornerRadius(8)
         }
     }
@@ -389,10 +389,10 @@ struct WorkoutSessionView: View {
         exerciseData = exercises.sorted(by: { ($0.order ?? 0) < ($1.order ?? 0) }).map { planEx in
             ExerciseSessionData(
                 name: planEx.name,
-                targetSets: planEx.sets,
-                targetReps: planEx.reps,
+                targetSets: planEx.sets ?? 3,
+                targetReps: planEx.reps ?? "8-12",
                 restSeconds: planEx.restSeconds ?? 90,
-                sets: (0..<planEx.sets).map { _ in
+                sets: (0..<(planEx.sets ?? 3)).map { _ in
                     SetSessionData()
                 }
             )

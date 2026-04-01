@@ -3,18 +3,24 @@ import BackgroundTasks
 
 @main
 struct VitalApp: App {
-    @StateObject private var authService: AuthService
-    @StateObject private var healthKitService: HealthKitService
-    @StateObject private var apiService: APIService
+    @State private var authService: AuthService
+    @State private var healthKitService: HealthKitService
+    @State private var syncService: SyncService
+    @State private var apiService: APIService
+    @State private var networkMonitor: NetworkMonitor
 
     init() {
         let auth = AuthService()
         let healthKit = HealthKitService()
+        let sync = SyncService(healthKitService: healthKit, authService: auth)
         let api = APIService(authService: auth)
+        let network = NetworkMonitor()
 
-        _authService = StateObject(wrappedValue: auth)
-        _healthKitService = StateObject(wrappedValue: healthKit)
-        _apiService = StateObject(wrappedValue: api)
+        self.authService = auth
+        self.healthKitService = healthKit
+        self.syncService = sync
+        self.apiService = api
+        self.networkMonitor = network
 
         registerBackgroundTasks()
     }
@@ -22,9 +28,11 @@ struct VitalApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(authService)
-                .environmentObject(healthKitService)
-                .environmentObject(apiService)
+                .environment(authService)
+                .environment(healthKitService)
+                .environment(syncService)
+                .environment(apiService)
+                .environment(networkMonitor)
                 .preferredColorScheme(.dark)
         }
     }
@@ -33,13 +41,12 @@ struct VitalApp: App {
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: Config.backgroundTaskIdentifier,
             using: nil
-        ) { task in
+        ) { [self] task in
             guard let bgTask = task as? BGAppRefreshTask else { return }
             Task { @MainActor in
-                let syncService = SyncService(healthKitService: healthKitService, authService: authService)
-                await syncService.sync()
+                await self.syncService.sync()
                 bgTask.setTaskCompleted(success: true)
-                scheduleNextSync()
+                self.scheduleNextSync()
             }
         }
     }

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct MoreView: View {
-    @EnvironmentObject var apiService: APIService
+    @Environment(APIService.self) var apiService
 
     @State private var profile: UserProfile?
     @State private var showSettings = false
@@ -9,7 +9,7 @@ struct MoreView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: 0x0A0A0C).ignoresSafeArea()
+                Brand.bg.ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: 16) {
@@ -19,7 +19,7 @@ struct MoreView: View {
                         // Navigation items
                         navCard(
                             icon: "pill.fill",
-                            iconColor: 0x00D68F,
+                            iconColor: Brand.optimal,
                             title: "Supplements",
                             subtitle: "Your active stack"
                         ) {
@@ -27,13 +27,25 @@ struct MoreView: View {
                         }
 
                         navCard(
+                            icon: "cross.case.fill",
+                            iconColor: Brand.accent,
+                            title: "Lab Results",
+                            subtitle: "Blood work & biomarkers"
+                        ) {
+                            LabsView()
+                        }
+
+                        navCard(
                             icon: "bubble.left.and.bubble.right.fill",
-                            iconColor: 0x8B5CF6,
+                            iconColor: Brand.secondary,
                             title: "AI Health Chat",
                             subtitle: "Ask about your health data"
                         ) {
                             ChatView()
                         }
+
+                        // Connect devices
+                        connectDevicesCard
 
                         // Sync status card
                         syncStatusCard
@@ -63,7 +75,7 @@ struct MoreView: View {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [Color(hex: 0x00B4D8), Color(hex: 0x8B5CF6)],
+                            colors: [Brand.accent, Brand.secondary],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -72,31 +84,31 @@ struct MoreView: View {
 
                 Text(initials)
                     .font(.headline.weight(.bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Brand.textPrimary)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(profile?.name ?? profile?.email ?? "Loading...")
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(Brand.textPrimary)
 
                 if let email = profile?.email {
                     Text(email)
                         .font(.caption)
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                 }
 
                 if let goal = profile?.goal, !goal.isEmpty {
                     Text(goal)
                         .font(.caption)
-                        .foregroundColor(Color(hex: 0x00B4D8))
+                        .foregroundColor(Brand.accent)
                 }
             }
 
             Spacer()
         }
         .padding(16)
-        .background(Color(hex: 0x141418))
+        .background(Brand.card)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -116,41 +128,80 @@ struct MoreView: View {
 
     // MARK: - Navigation Card
 
-    private func navCard<Destination: View>(icon: String, iconColor: UInt, title: String, subtitle: String, @ViewBuilder destination: () -> Destination) -> some View {
+    private func navCard<Destination: View>(icon: String, iconColor: Color, title: String, subtitle: String, @ViewBuilder destination: () -> Destination) -> some View {
         NavigationLink {
             destination()
         } label: {
             HStack(spacing: 14) {
                 Image(systemName: icon)
                     .font(.body)
-                    .foregroundColor(Color(hex: iconColor))
+                    .foregroundColor(iconColor)
                     .frame(width: 36, height: 36)
-                    .background(Color(hex: iconColor).opacity(0.15))
+                    .background(iconColor.opacity(0.15))
                     .cornerRadius(8)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(Brand.textPrimary)
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundColor(Color(hex: 0x606070))
+                    .foregroundColor(Brand.textMuted)
             }
             .padding(14)
-            .background(Color(hex: 0x141418))
+            .background(Brand.card)
             .cornerRadius(14)
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
                     .stroke(Color.white.opacity(0.06), lineWidth: 1)
             )
         }
+        .buttonStyle(PressScaleButtonStyle())
+    }
+
+    // MARK: - Connect Devices Card
+
+    private var connectDevicesCard: some View {
+        Link(destination: URL(string: "https://vital-health-dashboard.vercel.app/settings/devices")!) {
+            HStack(spacing: 14) {
+                Image(systemName: "applewatch.and.arrow.forward")
+                    .font(.body)
+                    .foregroundColor(Brand.secondary)
+                    .frame(width: 36, height: 36)
+                    .background(Brand.secondary.opacity(0.15))
+                    .cornerRadius(8)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Connect Devices")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(Brand.textPrimary)
+                    Text("Oura Ring, Whoop & more")
+                        .font(.caption)
+                        .foregroundColor(Brand.textMuted)
+                }
+
+                Spacer()
+
+                Image(systemName: "arrow.up.right")
+                    .font(.caption)
+                    .foregroundColor(Brand.textMuted)
+            }
+            .padding(14)
+            .background(Brand.card)
+            .cornerRadius(14)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                )
+        }
+        .buttonStyle(PressScaleButtonStyle())
     }
 
     // MARK: - Sync Status Card
@@ -161,35 +212,35 @@ struct MoreView: View {
         return HStack(spacing: 12) {
             Image(systemName: "arrow.triangle.2.circlepath")
                 .font(.body)
-                .foregroundColor(Color(hex: 0x00B4D8))
+                .foregroundColor(Brand.accent)
                 .frame(width: 36, height: 36)
-                .background(Color(hex: 0x00B4D8).opacity(0.15))
+                .background(Brand.accent.opacity(0.15))
                 .cornerRadius(8)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Sync Status")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Brand.textPrimary)
 
                 if let lastSync {
                     Text("Last synced \(lastSync, style: .relative) ago")
                         .font(.caption)
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                 } else {
                     Text("Not synced yet")
                         .font(.caption)
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                 }
             }
 
             Spacer()
 
             Circle()
-                .fill(lastSync != nil ? Color(hex: 0x00D68F) : Color(hex: 0x606070))
+                .fill(lastSync != nil ? Brand.optimal : Brand.textMuted)
                 .frame(width: 8, height: 8)
         }
         .padding(14)
-        .background(Color(hex: 0x141418))
+        .background(Brand.card)
         .cornerRadius(14)
         .overlay(
             RoundedRectangle(cornerRadius: 14)
@@ -219,7 +270,7 @@ struct MoreView: View {
                 settingsRow(icon: "hand.raised.fill", title: "Privacy Policy")
             }
         }
-        .background(Color(hex: 0x141418))
+        .background(Brand.card)
         .cornerRadius(14)
         .overlay(
             RoundedRectangle(cornerRadius: 14)
@@ -231,18 +282,18 @@ struct MoreView: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.subheadline)
-                .foregroundColor(Color(hex: 0xA0A0B0))
+                .foregroundColor(Brand.textSecondary)
                 .frame(width: 24)
 
             Text(title)
                 .font(.subheadline)
-                .foregroundColor(.white)
+                .foregroundColor(Brand.textPrimary)
 
             Spacer()
 
             Image(systemName: "chevron.right")
                 .font(.caption2)
-                .foregroundColor(Color(hex: 0x606070))
+                .foregroundColor(Brand.textMuted)
         }
         .padding(14)
     }
@@ -256,5 +307,16 @@ struct MoreView: View {
         } catch {
             // Non-critical, just show placeholder
         }
+    }
+}
+
+// MARK: - Press Scale Button Style
+
+struct PressScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .opacity(configuration.isPressed ? 0.9 : 1.0)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }

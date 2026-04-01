@@ -7,6 +7,8 @@ struct MacroBar: View {
     let color: Color
     let unit: String
 
+    @State private var animatedProgress: Double = 0
+
     private var progress: Double {
         guard target > 0 else { return 0 }
         return min(current / target, 1.0)
@@ -17,7 +19,7 @@ struct MacroBar: View {
             HStack {
                 Text(label)
                     .font(.caption.weight(.medium))
-                    .foregroundColor(Color(hex: 0xA0A0B0))
+                    .foregroundColor(Brand.textSecondary)
 
                 Spacer()
 
@@ -25,11 +27,11 @@ struct MacroBar: View {
                     Text(formatValue(current))
                         .font(.subheadline.weight(.semibold))
                         .monospacedDigit()
-                        .foregroundColor(.white)
+                        .foregroundColor(Brand.textPrimary)
 
                     Text("/ \(formatValue(target)) \(unit)")
                         .font(.caption2)
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                 }
             }
 
@@ -40,13 +42,23 @@ struct MacroBar: View {
                         .fill(Color.white.opacity(0.06))
                         .frame(height: 6)
 
-                    // Fill
+                    // Fill — animated width
                     Capsule()
                         .fill(color)
-                        .frame(width: geo.size.width * progress, height: 6)
+                        .frame(width: geo.size.width * animatedProgress, height: 6)
                 }
             }
             .frame(height: 6)
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.7)) {
+                animatedProgress = progress
+            }
+        }
+        .onChange(of: current) { _, _ in
+            withAnimation(.easeOut(duration: 0.4)) {
+                animatedProgress = progress
+            }
         }
     }
 

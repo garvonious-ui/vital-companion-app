@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct MealFormView: View {
-    @EnvironmentObject var apiService: APIService
+    @Environment(APIService.self) var apiService
     @Environment(\.dismiss) var dismiss
 
     let date: String
@@ -27,7 +27,7 @@ struct MealFormView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: 0x0A0A0C).ignoresSafeArea()
+                Brand.bg.ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: 20) {
@@ -35,7 +35,7 @@ struct MealFormView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Meal Type")
                                 .font(.caption.weight(.medium))
-                                .foregroundColor(Color(hex: 0xA0A0B0))
+                                .foregroundColor(Brand.textSecondary)
 
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 8) {
@@ -84,7 +84,7 @@ struct MealFormView: View {
                         if let error = errorMessage {
                             Text(error)
                                 .font(.caption)
-                                .foregroundColor(Color(hex: 0xFF4757))
+                                .foregroundColor(Brand.critical)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
 
@@ -102,8 +102,8 @@ struct MealFormView: View {
                             .font(.body.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(isValid ? Color(hex: 0x00B4D8) : Color(hex: 0x1C1C22))
-                            .foregroundColor(isValid ? .white : Color(hex: 0x606070))
+                            .background(isValid ? Brand.accent : Brand.elevated)
+                            .foregroundColor(isValid ? .white : Brand.textMuted)
                             .cornerRadius(12)
                         }
                         .disabled(!isValid || isSaving)
@@ -118,13 +118,13 @@ struct MealFormView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
-                        .foregroundColor(Color(hex: 0xA0A0B0))
+                        .foregroundColor(Brand.textSecondary)
                 }
             }
             .onAppear {
                 if let meal = editingMeal {
                     name = meal.name
-                    mealType = meal.mealType.lowercased()
+                    mealType = (meal.mealType ?? "snack").lowercased()
                     calories = meal.calories.map { String($0) } ?? ""
                     protein = meal.protein.map { String(Int($0)) } ?? ""
                     carbs = meal.carbs.map { String(Int($0)) } ?? ""
@@ -146,12 +146,12 @@ struct MealFormView: View {
                 .font(.caption.weight(.medium))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .background(isSelected ? Color(hex: 0x00B4D8).opacity(0.2) : Color(hex: 0x1C1C22))
-                .foregroundColor(isSelected ? Color(hex: 0x00B4D8) : Color(hex: 0xA0A0B0))
+                .background(isSelected ? Brand.accent.opacity(0.2) : Brand.elevated)
+                .foregroundColor(isSelected ? Brand.accent : Brand.textSecondary)
                 .cornerRadius(8)
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(isSelected ? Color(hex: 0x00B4D8).opacity(0.4) : Color.clear, lineWidth: 1)
+                        .stroke(isSelected ? Brand.accent.opacity(0.4) : Color.clear, lineWidth: 1)
                 )
         }
     }
@@ -162,7 +162,7 @@ struct MealFormView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
                 .font(.caption.weight(.medium))
-                .foregroundColor(Color(hex: 0xA0A0B0))
+                .foregroundColor(Brand.textSecondary)
             content()
         }
     }
@@ -176,11 +176,11 @@ struct MealFormView: View {
         let body = NutritionLogBody(
             date: date,
             mealType: mealType,
-            name: name.trimmingCharacters(in: .whitespaces),
+            meal: name.trimmingCharacters(in: .whitespaces),
             calories: Int(calories),
-            protein: Double(protein),
-            carbs: Double(carbs),
-            fat: Double(fat)
+            proteinG: Double(protein),
+            carbsG: Double(carbs),
+            fatG: Double(fat)
         )
 
         do {
@@ -190,8 +190,10 @@ struct MealFormView: View {
             } else {
                 let _: APIResponse<NutritionEntry> = try await apiService.post("/nutrition", body: body)
             }
+            HapticManager.success()
             dismiss()
         } catch {
+            HapticManager.error()
             errorMessage = error.localizedDescription
             isSaving = false
         }
@@ -204,7 +206,7 @@ struct DarkFieldStyle: TextFieldStyle {
     func _body(configuration: TextField<Self._Label>) -> some View {
         configuration
             .padding(12)
-            .background(Color(hex: 0x1C1C22))
+            .background(Brand.elevated)
             .cornerRadius(10)
             .foregroundColor(.white)
             .overlay(

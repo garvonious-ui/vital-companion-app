@@ -1,16 +1,16 @@
 import Foundation
 
-struct MetricSample: Codable {
+struct MetricSample: Codable, Sendable {
     let date: String
     let qty: Double
 }
 
-struct MetricPayload: Codable {
+struct MetricPayload: Codable, Sendable {
     let name: String
     let data: [MetricSample]
 }
 
-struct WorkoutPayload: Codable {
+struct WorkoutPayload: Codable, Sendable {
     let name: String
     let start: String
     let end: String
@@ -20,42 +20,42 @@ struct WorkoutPayload: Codable {
     let maxHeartRate: QuantityValue?
 }
 
-struct QuantityValue: Codable {
+struct QuantityValue: Codable, Sendable {
     let qty: Double
 }
 
-struct IngestPayload: Codable {
+struct IngestPayload: Codable, Sendable {
     let data: IngestData
 }
 
-struct IngestData: Codable {
+struct IngestData: Codable, Sendable {
     let metrics: [MetricPayload]
     let workouts: [WorkoutPayload]
 }
 
-struct IngestResponse: Codable {
+struct IngestResponse: Codable, Sendable {
     let success: Bool
     let summary: IngestSummary?
     let error: String?
 }
 
-struct IngestSummary: Codable {
+struct IngestSummary: Codable, Sendable {
     let metrics: MetricsSummary
     let workouts: WorkoutsSummary
 }
 
-struct MetricsSummary: Codable {
+struct MetricsSummary: Codable, Sendable {
     let created: Int
     let updated: Int
     let skipped: Int
 }
 
-struct WorkoutsSummary: Codable {
+struct WorkoutsSummary: Codable, Sendable {
     let created: Int
     let skipped: Int
 }
 
-struct SyncLogEntry: Identifiable, Codable {
+struct SyncLogEntry: Identifiable, Codable, Sendable {
     let id: UUID
     let date: Date
     let metricsUpdated: Int

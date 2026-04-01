@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct PermissionsView: View {
-    @EnvironmentObject var healthKitService: HealthKitService
+    @Environment(HealthKitService.self) var healthKitService
     @State private var isRequesting = false
     @State private var errorMessage: String?
 
@@ -18,18 +18,18 @@ struct PermissionsView: View {
 
     var body: some View {
         ZStack {
-            Color(hex: 0x0A0A0C).ignoresSafeArea()
+            Brand.bg.ignoresSafeArea()
 
             VStack(spacing: 24) {
                 Spacer().frame(height: 20)
 
                 Text("Health Access")
                     .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Brand.textPrimary)
 
                 Text("Vital needs read access to sync your Apple Health data to your dashboard.")
                     .font(.subheadline)
-                    .foregroundColor(Color(hex: 0xA0A0B0))
+                    .foregroundColor(Brand.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
 
@@ -39,22 +39,22 @@ struct PermissionsView: View {
                             HStack(spacing: 14) {
                                 Image(systemName: icon)
                                     .font(.title3)
-                                    .foregroundColor(Color(hex: 0x00B4D8))
+                                    .foregroundColor(Brand.accent)
                                     .frame(width: 32)
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(name)
                                         .font(.subheadline.weight(.medium))
-                                        .foregroundColor(.white)
+                                        .foregroundColor(Brand.textPrimary)
                                     Text(description)
                                         .font(.caption)
-                                        .foregroundColor(Color(hex: 0x606070))
+                                        .foregroundColor(Brand.textMuted)
                                 }
 
                                 Spacer()
                             }
                             .padding(12)
-                            .background(Color(hex: 0x141418))
+                            .background(Brand.card)
                             .cornerRadius(12)
                         }
                     }
@@ -64,7 +64,7 @@ struct PermissionsView: View {
                 if let error = errorMessage {
                     Text(error)
                         .font(.caption)
-                        .foregroundColor(Color(hex: 0xFF4757))
+                        .foregroundColor(Brand.critical)
                 }
 
                 Button {
@@ -87,8 +87,8 @@ struct PermissionsView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(Color(hex: 0x00D68F))
-                    .foregroundColor(.white)
+                    .background(Brand.optimal)
+                    .foregroundColor(Brand.textPrimary)
                     .cornerRadius(12)
                 }
                 .disabled(isRequesting)

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct QuickLogView: View {
-    @EnvironmentObject var apiService: APIService
+    @Environment(APIService.self) var apiService
     @Environment(\.dismiss) var dismiss
 
     @State private var type: String = "strength"
@@ -30,7 +30,7 @@ struct QuickLogView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: 0x0A0A0C).ignoresSafeArea()
+                Brand.bg.ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: 20) {
@@ -38,7 +38,7 @@ struct QuickLogView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Type")
                                 .font(.caption.weight(.medium))
-                                .foregroundColor(Color(hex: 0xA0A0B0))
+                                .foregroundColor(Brand.textSecondary)
 
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
                                 ForEach(workoutTypes, id: \.0) { wType, icon in
@@ -78,7 +78,7 @@ struct QuickLogView: View {
                         if let error = errorMessage {
                             Text(error)
                                 .font(.caption)
-                                .foregroundColor(Color(hex: 0xFF4757))
+                                .foregroundColor(Brand.critical)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
 
@@ -96,8 +96,8 @@ struct QuickLogView: View {
                             .font(.body.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(isValid ? Color(hex: 0x00B4D8) : Color(hex: 0x1C1C22))
-                            .foregroundColor(isValid ? .white : Color(hex: 0x606070))
+                            .background(isValid ? Brand.accent : Brand.elevated)
+                            .foregroundColor(isValid ? .white : Brand.textMuted)
                             .cornerRadius(12)
                         }
                         .disabled(!isValid || isSaving)
@@ -112,7 +112,7 @@ struct QuickLogView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
-                        .foregroundColor(Color(hex: 0xA0A0B0))
+                        .foregroundColor(Brand.textSecondary)
                 }
             }
         }
@@ -132,12 +132,12 @@ struct QuickLogView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
-            .background(isSelected ? Color(hex: 0x00B4D8).opacity(0.2) : Color(hex: 0x1C1C22))
-            .foregroundColor(isSelected ? Color(hex: 0x00B4D8) : Color(hex: 0xA0A0B0))
+            .background(isSelected ? Brand.accent.opacity(0.2) : Brand.elevated)
+            .foregroundColor(isSelected ? Brand.accent : Brand.textSecondary)
             .cornerRadius(10)
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(isSelected ? Color(hex: 0x00B4D8).opacity(0.4) : Color.clear, lineWidth: 1)
+                    .stroke(isSelected ? Brand.accent.opacity(0.4) : Color.clear, lineWidth: 1)
             )
         }
     }
@@ -146,7 +146,7 @@ struct QuickLogView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
                 .font(.caption.weight(.medium))
-                .foregroundColor(Color(hex: 0xA0A0B0))
+                .foregroundColor(Brand.textSecondary)
             content()
         }
     }
@@ -173,8 +173,10 @@ struct QuickLogView: View {
 
         do {
             let _: APIResponse<Workout> = try await apiService.post("/workouts", body: body)
+            HapticManager.success()
             dismiss()
         } catch {
+            HapticManager.error()
             errorMessage = error.localizedDescription
             isSaving = false
         }

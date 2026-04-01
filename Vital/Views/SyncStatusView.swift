@@ -1,24 +1,16 @@
 import SwiftUI
 
 struct SyncStatusView: View {
-    @EnvironmentObject var authService: AuthService
-    @EnvironmentObject var healthKitService: HealthKitService
-    @StateObject private var syncService: SyncService
+    @Environment(AuthService.self) var authService
+    @Environment(HealthKitService.self) var healthKitService
+    @Environment(SyncService.self) var syncService
 
     @State private var showSettings = false
-
-    init() {
-        // Placeholder — real init happens in .onAppear since we need environment objects
-        _syncService = StateObject(wrappedValue: SyncService(
-            healthKitService: HealthKitService(),
-            authService: AuthService()
-        ))
-    }
 
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: 0x0A0A0C).ignoresSafeArea()
+                Brand.bg.ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: 20) {
@@ -27,34 +19,34 @@ struct SyncStatusView: View {
                             ZStack {
                                 Circle()
                                     .fill(syncService.isSyncing
-                                          ? Color(hex: 0x00B4D8).opacity(0.15)
-                                          : Color(hex: 0x00D68F).opacity(0.15))
+                                          ? Brand.accent.opacity(0.15)
+                                          : Brand.optimal.opacity(0.15))
                                     .frame(width: 80, height: 80)
 
                                 if syncService.isSyncing {
                                     ProgressView()
-                                        .tint(Color(hex: 0x00B4D8))
+                                        .tint(Brand.accent)
                                         .scaleEffect(1.5)
                                 } else {
                                     Image(systemName: "checkmark.circle.fill")
                                         .font(.system(size: 36))
-                                        .foregroundColor(Color(hex: 0x00D68F))
+                                        .foregroundColor(Brand.optimal)
                                 }
                             }
 
                             VStack(spacing: 4) {
                                 Text(syncService.isSyncing ? "Syncing..." : "Connected")
                                     .font(.headline)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(Brand.textPrimary)
 
                                 if let lastSync = syncService.lastSyncDate {
                                     Text("Last sync: \(lastSync, style: .relative) ago")
                                         .font(.caption)
-                                        .foregroundColor(Color(hex: 0xA0A0B0))
+                                        .foregroundColor(Brand.textSecondary)
                                 } else {
                                     Text("Not synced yet")
                                         .font(.caption)
-                                        .foregroundColor(Color(hex: 0x606070))
+                                        .foregroundColor(Brand.textMuted)
                                 }
                             }
 
@@ -65,15 +57,15 @@ struct SyncStatusView: View {
                                     .font(.subheadline.weight(.semibold))
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 12)
-                                    .background(Color(hex: 0x00B4D8))
-                                    .foregroundColor(.white)
+                                    .background(Brand.accent)
+                                    .foregroundColor(Brand.textPrimary)
                                     .cornerRadius(10)
                             }
                             .disabled(syncService.isSyncing)
                             .opacity(syncService.isSyncing ? 0.5 : 1)
                         }
                         .padding(20)
-                        .background(Color(hex: 0x141418))
+                        .background(Brand.card)
                         .cornerRadius(16)
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
@@ -85,33 +77,33 @@ struct SyncStatusView: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Recent Syncs")
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundColor(Color(hex: 0xA0A0B0))
+                                    .foregroundColor(Brand.textSecondary)
 
                                 ForEach(syncService.syncLog.prefix(5)) { entry in
                                     HStack {
                                         Circle()
-                                            .fill(entry.success ? Color(hex: 0x00D68F) : Color(hex: 0xFF4757))
+                                            .fill(entry.success ? Brand.optimal : Brand.critical)
                                             .frame(width: 8, height: 8)
 
                                         VStack(alignment: .leading, spacing: 2) {
                                             if entry.success {
                                                 Text("\(entry.metricsUpdated) metrics, \(entry.workoutsCreated) workouts")
                                                     .font(.caption)
-                                                    .foregroundColor(.white)
+                                                    .foregroundColor(Brand.textPrimary)
                                             } else {
                                                 Text(entry.errorMessage ?? "Failed")
                                                     .font(.caption)
-                                                    .foregroundColor(Color(hex: 0xFF4757))
+                                                    .foregroundColor(Brand.critical)
                                             }
                                             Text(entry.date, style: .relative)
                                                 .font(.caption2)
-                                                .foregroundColor(Color(hex: 0x606070))
+                                                .foregroundColor(Brand.textMuted)
                                         }
 
                                         Spacer()
                                     }
                                     .padding(10)
-                                    .background(Color(hex: 0x141418))
+                                    .background(Brand.card)
                                     .cornerRadius(10)
                                 }
                             }
@@ -128,7 +120,7 @@ struct SyncStatusView: View {
                         showSettings = true
                     } label: {
                         Image(systemName: "gearshape")
-                            .foregroundColor(Color(hex: 0xA0A0B0))
+                            .foregroundColor(Brand.textSecondary)
                     }
                 }
             }
@@ -137,13 +129,10 @@ struct SyncStatusView: View {
             }
         }
         .onAppear {
-            // Wire up the real services and enable background delivery
-            let realSync = SyncService(healthKitService: healthKitService, authService: authService)
-            // Trigger initial sync if never synced
-            if realSync.lastSyncDate == nil {
-                Task { await realSync.sync() }
-            }
             healthKitService.enableBackgroundDelivery()
+            if syncService.lastSyncDate == nil {
+                Task { await syncService.sync() }
+            }
         }
     }
 }

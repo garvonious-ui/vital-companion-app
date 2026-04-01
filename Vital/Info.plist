@@ -22,10 +22,14 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Vital uses your camera to photograph meals for AI-powered nutrition analysis.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Vital syncs your Apple Health data to your personal health dashboard for tracking trends in HRV, heart rate, sleep, workouts, and more.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Vital does not write data to Apple Health.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Vital accesses your photo library so you can select meal photos for nutrition analysis.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

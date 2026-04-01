@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ChatView: View {
-    @EnvironmentObject var apiService: APIService
+    @Environment(APIService.self) var apiService
 
     @State private var messages: [ChatMessage] = []
     @State private var inputText: String = ""
@@ -10,7 +10,7 @@ struct ChatView: View {
 
     var body: some View {
         ZStack {
-            Color(hex: 0x0A0A0C).ignoresSafeArea()
+            Brand.bg.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Messages
@@ -56,15 +56,15 @@ struct ChatView: View {
         VStack(spacing: 16) {
             Image(systemName: "bubble.left.and.bubble.right.fill")
                 .font(.system(size: 40))
-                .foregroundColor(Color(hex: 0x8B5CF6).opacity(0.6))
+                .foregroundColor(Brand.secondary.opacity(0.6))
 
             Text("Health Assistant")
                 .font(.headline)
-                .foregroundColor(.white)
+                .foregroundColor(Brand.textPrimary)
 
             Text("Ask me anything about your health data, recovery, nutrition, or training. I have access to your metrics and history.")
                 .font(.subheadline)
-                .foregroundColor(Color(hex: 0xA0A0B0))
+                .foregroundColor(Brand.textSecondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
 
@@ -85,14 +85,14 @@ struct ChatView: View {
         } label: {
             Text(text)
                 .font(.caption)
-                .foregroundColor(Color(hex: 0x00B4D8))
+                .foregroundColor(Brand.accent)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .background(Color(hex: 0x00B4D8).opacity(0.1))
+                .background(Brand.accent.opacity(0.1))
                 .cornerRadius(8)
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color(hex: 0x00B4D8).opacity(0.2), lineWidth: 1)
+                        .stroke(Brand.accent.opacity(0.2), lineWidth: 1)
                 )
         }
     }
@@ -104,19 +104,19 @@ struct ChatView: View {
             if message.role == .user { Spacer(minLength: 60) }
 
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
-                Text(message.content)
+                Text(markdownAttributed(message.content))
                     .font(.subheadline)
-                    .foregroundColor(.white)
+                    .foregroundColor(Brand.textPrimary)
                     .lineSpacing(4)
                     .textSelection(.enabled)
 
                 if message.role == .assistant && isStreaming && message.id == messages.last?.id {
                     HStack(spacing: 4) {
-                        Circle().fill(Color(hex: 0x8B5CF6)).frame(width: 4, height: 4)
+                        Circle().fill(Brand.secondary).frame(width: 4, height: 4)
                             .opacity(0.6)
-                        Circle().fill(Color(hex: 0x8B5CF6)).frame(width: 4, height: 4)
+                        Circle().fill(Brand.secondary).frame(width: 4, height: 4)
                             .opacity(0.4)
-                        Circle().fill(Color(hex: 0x8B5CF6)).frame(width: 4, height: 4)
+                        Circle().fill(Brand.secondary).frame(width: 4, height: 4)
                             .opacity(0.2)
                     }
                     .padding(.top, 2)
@@ -125,15 +125,15 @@ struct ChatView: View {
             .padding(12)
             .background(
                 message.role == .user
-                    ? Color(hex: 0x00B4D8).opacity(0.2)
-                    : Color(hex: 0x141418)
+                    ? Brand.accent.opacity(0.2)
+                    : Brand.card
             )
             .cornerRadius(14)
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
                     .stroke(
                         message.role == .user
-                            ? Color(hex: 0x00B4D8).opacity(0.15)
+                            ? Brand.accent.opacity(0.15)
                             : Color.white.opacity(0.06),
                         lineWidth: 1
                     )
@@ -150,9 +150,9 @@ struct ChatView: View {
             TextField("Ask about your health...", text: $inputText, axis: .vertical)
                 .lineLimit(1...4)
                 .font(.subheadline)
-                .foregroundColor(.white)
+                .foregroundColor(Brand.textPrimary)
                 .padding(12)
-                .background(Color(hex: 0x141418))
+                .background(Brand.card)
                 .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
@@ -166,18 +166,22 @@ struct ChatView: View {
                     .font(.title2)
                     .foregroundColor(
                         inputText.trimmingCharacters(in: .whitespaces).isEmpty && !isStreaming
-                            ? Color(hex: 0x606070)
-                            : Color(hex: 0x00B4D8)
+                            ? Brand.textMuted
+                            : Brand.accent
                     )
             }
             .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty && !isStreaming)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(Color(hex: 0x0A0A0C))
+        .background(Brand.bg)
     }
 
     // MARK: - Send & Stream
+
+    private func markdownAttributed(_ string: String) -> AttributedString {
+        (try? AttributedString(markdown: string, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(string)
+    }
 
     private func sendMessage() {
         if isStreaming {
@@ -221,14 +225,24 @@ struct ChatView: View {
                             break
                         }
 
-                        // Try to parse as JSON token
+                        // Try to parse as JSON
                         if let jsonData = data.data(using: .utf8),
-                           let token = try? JSONDecoder().decode(SSEToken.self, from: jsonData) {
-                            await MainActor.run {
-                                messages[assistantIndex].content += token.content
+                           let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                            let type = json["type"] as? String
+                            // Only extract text from "text" type events
+                            if type == "text", let text = json["text"] as? String {
+                                await MainActor.run {
+                                    messages[assistantIndex].content += text
+                                }
+                            } else if type == "content", let text = json["content"] as? String {
+                                // Alternate format
+                                await MainActor.run {
+                                    messages[assistantIndex].content += text
+                                }
                             }
-                        } else {
-                            // Plain text token
+                            // Skip conversation_id, remaining, and other control events
+                        } else if !data.starts(with: "{") {
+                            // Plain text token (not JSON)
                             await MainActor.run {
                                 messages[assistantIndex].content += data
                             }

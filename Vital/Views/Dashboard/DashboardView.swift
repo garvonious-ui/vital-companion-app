@@ -1,15 +1,16 @@
 import SwiftUI
 
 struct DashboardView: View {
-    @EnvironmentObject var apiService: APIService
-    @EnvironmentObject var healthKitService: HealthKitService
-    @EnvironmentObject var authService: AuthService
+    @Environment(APIService.self) var apiService
+    @Environment(HealthKitService.self) var healthKitService
+    @Environment(AuthService.self) var authService
 
     @State private var metrics: [DailyMetric] = []
     @State private var targets: UserTargets?
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var lastSyncDate: Date?
+    @State private var showContent = false
 
     private var today: DailyMetric? {
         let todayStr = formatDate(Date())
@@ -79,20 +80,42 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: 0x0A0A0C).ignoresSafeArea()
+                Brand.bg.ignoresSafeArea()
 
                 if isLoading {
-                    ProgressView()
-                        .tint(.white)
+                    DashboardSkeleton()
+                        .padding(.top, 8)
                 } else if let error = errorMessage {
                     errorView(error)
+                } else if metrics.isEmpty {
+                    EmptyStateView(
+                        icon: "heart.text.square",
+                        title: "No health data yet",
+                        subtitle: "Sync your Apple Watch to see recovery, activity, and trends",
+                        buttonTitle: "Sync Now",
+                        buttonAction: { Task { await syncAndRefresh() } }
+                    )
                 } else {
                     ScrollView {
                         VStack(spacing: 16) {
                             recoveryCard
+                                .opacity(showContent ? 1 : 0)
+                                .offset(y: showContent ? 0 : 10)
+                                .animation(.easeOut(duration: 0.4).delay(0.05), value: showContent)
+
                             activityCard
+                                .opacity(showContent ? 1 : 0)
+                                .offset(y: showContent ? 0 : 10)
+                                .animation(.easeOut(duration: 0.4).delay(0.15), value: showContent)
+
                             trendsCard
+                                .opacity(showContent ? 1 : 0)
+                                .offset(y: showContent ? 0 : 10)
+                                .animation(.easeOut(duration: 0.4).delay(0.25), value: showContent)
+
                             syncIndicator
+                                .opacity(showContent ? 1 : 0)
+                                .animation(.easeOut(duration: 0.3).delay(0.35), value: showContent)
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 8)
@@ -111,7 +134,7 @@ struct DashboardView: View {
                         Task { await syncAndRefresh() }
                     } label: {
                         Image(systemName: "arrow.triangle.2.circlepath")
-                            .foregroundColor(Color(hex: 0xA0A0B0))
+                            .foregroundColor(Brand.textSecondary)
                     }
                 }
             }
@@ -128,7 +151,7 @@ struct DashboardView: View {
             HStack {
                 Text("Recovery")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundColor(Color(hex: 0xA0A0B0))
+                    .foregroundColor(Brand.textSecondary)
 
                 Spacer()
 
@@ -136,11 +159,11 @@ struct DashboardView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "flame.fill")
                             .font(.caption)
-                            .foregroundColor(Color(hex: 0xFFB547))
+                            .foregroundColor(Brand.warning)
                         Text("\(streakDays)d streak")
                             .font(.caption.weight(.medium))
                             .monospacedDigit()
-                            .foregroundColor(Color(hex: 0xFFB547))
+                            .foregroundColor(Brand.warning)
                     }
                 }
             }
@@ -168,7 +191,7 @@ struct DashboardView: View {
             }
         }
         .padding(20)
-        .background(Color(hex: 0x141418))
+        .background(Brand.card)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -180,14 +203,14 @@ struct DashboardView: View {
         VStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.caption)
-                .foregroundColor(Color(hex: 0x606070))
+                .foregroundColor(Brand.textMuted)
             Text(value)
                 .font(.caption.weight(.semibold))
                 .monospacedDigit()
-                .foregroundColor(.white)
+                .foregroundColor(Brand.textPrimary)
             Text(label)
                 .font(.caption2)
-                .foregroundColor(Color(hex: 0x606070))
+                .foregroundColor(Brand.textMuted)
         }
         .frame(maxWidth: .infinity)
     }
@@ -199,7 +222,7 @@ struct DashboardView: View {
             HStack {
                 Text("Activity")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundColor(Color(hex: 0xA0A0B0))
+                    .foregroundColor(Brand.textSecondary)
                 Spacer()
             }
 
@@ -207,7 +230,7 @@ struct DashboardView: View {
                 label: "Steps",
                 current: today?.steps ?? 0,
                 target: Double(targets?.steps ?? 10000),
-                color: Color(hex: 0x00B4D8),
+                color: Brand.accent,
                 unit: ""
             )
 
@@ -215,20 +238,20 @@ struct DashboardView: View {
                 label: "Exercise",
                 current: today?.exerciseMinutes ?? 0,
                 target: Double(targets?.exerciseMinutes ?? 30),
-                color: Color(hex: 0x00D68F),
+                color: Brand.optimal,
                 unit: "min"
             )
 
             MacroBar(
                 label: "Calories",
-                current: today?.activeEnergy ?? 0,
+                current: today?.activeCalories ?? 0,
                 target: Double(targets?.calories ?? 2500),
-                color: Color(hex: 0xFF4757),
+                color: Brand.critical,
                 unit: "kcal"
             )
         }
         .padding(20)
-        .background(Color(hex: 0x141418))
+        .background(Brand.card)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -243,14 +266,14 @@ struct DashboardView: View {
             HStack {
                 Text("7-Day Trends")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundColor(Color(hex: 0xA0A0B0))
+                    .foregroundColor(Brand.textSecondary)
                 Spacer()
             }
 
             let hrvData = last7Days.reversed().compactMap { $0.heartRateVariability }
             SparklineChart(
                 dataPoints: hrvData,
-                color: Color(hex: 0x8B5CF6),
+                color: Brand.secondary,
                 label: "HRV",
                 unit: "ms",
                 latestValue: today?.heartRateVariability.map { String(format: "%.0f", $0) } ?? "—"
@@ -261,14 +284,14 @@ struct DashboardView: View {
             let rhrData = last7Days.reversed().compactMap { $0.restingHeartRate }
             SparklineChart(
                 dataPoints: rhrData,
-                color: Color(hex: 0x00D68F),
+                color: Brand.optimal,
                 label: "Resting HR",
                 unit: "bpm",
                 latestValue: today?.restingHeartRate.map { String(format: "%.0f", $0) } ?? "—"
             )
         }
         .padding(20)
-        .background(Color(hex: 0x141418))
+        .background(Brand.card)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -284,11 +307,11 @@ struct DashboardView: View {
             if let lastSync = lastSyncDate {
                 HStack(spacing: 4) {
                     Circle()
-                        .fill(Color(hex: 0x00D68F))
+                        .fill(Brand.optimal)
                         .frame(width: 6, height: 6)
                     Text("Synced \(lastSync, style: .relative) ago")
                         .font(.caption2)
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                 }
             }
             Spacer()
@@ -302,10 +325,10 @@ struct DashboardView: View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.largeTitle)
-                .foregroundColor(Color(hex: 0xFFB547))
+                .foregroundColor(Brand.warning)
             Text(message)
                 .font(.subheadline)
-                .foregroundColor(Color(hex: 0xA0A0B0))
+                .foregroundColor(Brand.textSecondary)
                 .multilineTextAlignment(.center)
             Button("Retry") {
                 Task { await loadData() }
@@ -313,8 +336,8 @@ struct DashboardView: View {
             .font(.subheadline.weight(.semibold))
             .padding(.horizontal, 24)
             .padding(.vertical, 10)
-            .background(Color(hex: 0x00B4D8))
-            .foregroundColor(.white)
+            .background(Brand.accent)
+            .foregroundColor(Brand.textPrimary)
             .cornerRadius(10)
         }
         .padding()
@@ -336,6 +359,7 @@ struct DashboardView: View {
             targets = t.data
             lastSyncDate = UserDefaults.standard.object(forKey: "lastSyncDate") as? Date
             isLoading = false
+            withAnimation { showContent = true }
         } catch {
             errorMessage = error.localizedDescription
             isLoading = false
@@ -346,6 +370,7 @@ struct DashboardView: View {
         let syncService = SyncService(healthKitService: healthKitService, authService: authService)
         await syncService.sync()
         await loadData()
+        HapticManager.success()
     }
 
     private func formatDate(_ date: Date) -> String {

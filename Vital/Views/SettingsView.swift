@@ -1,18 +1,21 @@
 import SwiftUI
+import SafariServices
 
 struct SettingsView: View {
-    @EnvironmentObject var authService: AuthService
-    @EnvironmentObject var apiService: APIService
+    @Environment(AuthService.self) var authService
+    @Environment(APIService.self) var apiService
+    @Environment(SyncService.self) var syncService
     @Environment(\.dismiss) var dismiss
 
     @State private var profile: UserProfile?
     @State private var targets: UserTargets?
     @State private var syncLog: [SyncLogEntry] = []
     @State private var showSignOutConfirm = false
+    @State private var safariURL: URL?
 
     var body: some View {
         ZStack {
-            Color(hex: 0x0A0A0C).ignoresSafeArea()
+            Brand.bg.ignoresSafeArea()
 
             List {
                 // Profile section
@@ -32,29 +35,29 @@ struct SettingsView: View {
                             ProgressView().tint(.white)
                             Spacer()
                         }
-                        .listRowBackground(Color(hex: 0x141418))
+                        .listRowBackground(Brand.card)
                     }
                 } header: {
                     Text("Profile")
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                 }
 
                 // Targets section
                 Section {
                     if let targets {
-                        targetRow(label: "Calories", value: targets.calories.map { "\($0) kcal" } ?? "—", color: 0x00B4D8)
-                        targetRow(label: "Protein", value: targets.protein.map { "\($0)g" } ?? "—", color: 0x00D68F)
-                        targetRow(label: "Carbs", value: targets.carbs.map { "\($0)g" } ?? "—", color: 0xFFB547)
-                        targetRow(label: "Fat", value: targets.fat.map { "\($0)g" } ?? "—", color: 0x8B5CF6)
-                        targetRow(label: "Steps", value: targets.steps.map { "\($0)" } ?? "—", color: 0x00B4D8)
-                        targetRow(label: "Exercise", value: targets.exerciseMinutes.map { "\($0) min" } ?? "—", color: 0x00D68F)
+                        targetRow(label: "Calories", value: targets.calories.map { "\($0) kcal" } ?? "—", color: Brand.accent)
+                        targetRow(label: "Protein", value: targets.protein.map { "\($0)g" } ?? "—", color: Brand.optimal)
+                        targetRow(label: "Carbs", value: targets.carbs.map { "\($0)g" } ?? "—", color: Brand.warning)
+                        targetRow(label: "Fat", value: targets.fat.map { "\($0)g" } ?? "—", color: Brand.secondary)
+                        targetRow(label: "Steps", value: targets.steps.map { "\($0)" } ?? "—", color: Brand.accent)
+                        targetRow(label: "Exercise", value: targets.exerciseMinutes.map { "\($0) min" } ?? "—", color: Brand.optimal)
                     }
                 } header: {
                     Text("Daily Targets")
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                 } footer: {
                     Text("Edit targets on the web dashboard")
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                 }
 
                 // Sync section
@@ -62,99 +65,104 @@ struct SettingsView: View {
                     let lastSync = UserDefaults.standard.object(forKey: "lastSyncDate") as? Date
                     HStack {
                         Text("Last Sync")
-                            .foregroundColor(.white)
+                            .foregroundColor(Brand.textPrimary)
                         Spacer()
                         if let lastSync {
                             Text(lastSync, style: .relative)
-                                .foregroundColor(Color(hex: 0x606070))
+                                .foregroundColor(Brand.textMuted)
                             Text("ago")
-                                .foregroundColor(Color(hex: 0x606070))
+                                .foregroundColor(Brand.textMuted)
                         } else {
                             Text("Never")
-                                .foregroundColor(Color(hex: 0x606070))
+                                .foregroundColor(Brand.textMuted)
                         }
                     }
-                    .listRowBackground(Color(hex: 0x141418))
+                    .listRowBackground(Brand.card)
 
                     HStack {
                         Text("Frequency")
-                            .foregroundColor(.white)
+                            .foregroundColor(Brand.textPrimary)
                         Spacer()
                         Text("Hourly + on app open")
-                            .foregroundColor(Color(hex: 0x606070))
+                            .foregroundColor(Brand.textMuted)
                     }
-                    .listRowBackground(Color(hex: 0x141418))
+                    .listRowBackground(Brand.card)
 
                     // Recent sync log
                     if !syncLog.isEmpty {
                         ForEach(syncLog.prefix(5)) { entry in
                             HStack {
                                 Circle()
-                                    .fill(entry.success ? Color(hex: 0x00D68F) : Color(hex: 0xFF4757))
+                                    .fill(entry.success ? Brand.optimal : Brand.critical)
                                     .frame(width: 6, height: 6)
 
                                 if entry.success {
                                     Text("\(entry.metricsUpdated) metrics, \(entry.workoutsCreated) workouts")
                                         .font(.caption)
-                                        .foregroundColor(.white)
+                                        .foregroundColor(Brand.textPrimary)
                                 } else {
                                     Text(entry.errorMessage ?? "Failed")
                                         .font(.caption)
-                                        .foregroundColor(Color(hex: 0xFF4757))
+                                        .foregroundColor(Brand.critical)
                                 }
 
                                 Spacer()
 
                                 Text(entry.date, style: .relative)
                                     .font(.caption2)
-                                    .foregroundColor(Color(hex: 0x606070))
+                                    .foregroundColor(Brand.textMuted)
                             }
-                            .listRowBackground(Color(hex: 0x141418))
+                            .listRowBackground(Brand.card)
                         }
                     }
                 } header: {
                     Text("Sync")
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
+                }
+
+                // Troubleshooting section
+                Section {
+                    Button {
+                        Task {
+                            await syncService.resetAndSync()
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "arrow.clockwise")
+                                .foregroundColor(Brand.accent)
+                            Text("Force Full Sync")
+                                .foregroundColor(Brand.textPrimary)
+                            Spacer()
+                            Text("7 days")
+                                .font(.caption)
+                                .foregroundColor(Brand.textMuted)
+                        }
+                    }
+                    .disabled(syncService.isSyncing)
+                    .listRowBackground(Brand.card)
+                } header: {
+                    Text("Troubleshooting")
+                        .foregroundColor(Brand.textMuted)
                 }
 
                 // About section
                 Section {
                     HStack {
                         Text("Version")
-                            .foregroundColor(.white)
+                            .foregroundColor(Brand.textPrimary)
                         Spacer()
                         Text("1.0.0")
-                            .foregroundColor(Color(hex: 0x606070))
+                            .foregroundColor(Brand.textMuted)
                             .monospacedDigit()
                     }
-                    .listRowBackground(Color(hex: 0x141418))
+                    .listRowBackground(Brand.card)
 
-                    Link(destination: URL(string: "https://vital-health-dashboard.vercel.app")!) {
-                        HStack {
-                            Text("Web Dashboard")
-                                .foregroundColor(.white)
-                            Spacer()
-                            Image(systemName: "arrow.up.right")
-                                .font(.caption)
-                                .foregroundColor(Color(hex: 0x00B4D8))
-                        }
-                    }
-                    .listRowBackground(Color(hex: 0x141418))
-
-                    Link(destination: URL(string: "https://vital-health-dashboard.vercel.app/privacy")!) {
-                        HStack {
-                            Text("Privacy Policy")
-                                .foregroundColor(.white)
-                            Spacer()
-                            Image(systemName: "arrow.up.right")
-                                .font(.caption)
-                                .foregroundColor(Color(hex: 0x00B4D8))
-                        }
-                    }
-                    .listRowBackground(Color(hex: 0x141418))
+                    safariRow("Web Dashboard", url: "https://vital-health-dashboard.vercel.app")
+                    safariRow("Privacy Policy", url: "https://vital-health-dashboard.vercel.app/privacy")
+                    safariRow("Support", url: "mailto:lou@loucesario.com")
                 } header: {
                     Text("About")
-                        .foregroundColor(Color(hex: 0x606070))
+                        .foregroundColor(Brand.textMuted)
                 }
 
                 // Sign out
@@ -165,11 +173,11 @@ struct SettingsView: View {
                         HStack {
                             Spacer()
                             Text("Sign Out")
-                                .foregroundColor(Color(hex: 0xFF4757))
+                                .foregroundColor(Brand.critical)
                             Spacer()
                         }
                     }
-                    .listRowBackground(Color(hex: 0x141418))
+                    .listRowBackground(Brand.card)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -187,6 +195,15 @@ struct SettingsView: View {
         .task {
             await loadData()
         }
+        .sheet(isPresented: Binding(
+            get: { safariURL != nil },
+            set: { if !$0 { safariURL = nil } }
+        )) {
+            if let url = safariURL {
+                SafariView(url: url)
+                    .ignoresSafeArea()
+            }
+        }
     }
 
     // MARK: - Row Helpers
@@ -195,36 +212,58 @@ struct SettingsView: View {
         HStack(spacing: 10) {
             Image(systemName: icon)
                 .font(.caption)
-                .foregroundColor(Color(hex: 0x00B4D8))
+                .foregroundColor(Brand.accent)
                 .frame(width: 20)
 
             Text(label)
-                .foregroundColor(Color(hex: 0xA0A0B0))
+                .foregroundColor(Brand.textSecondary)
 
             Spacer()
 
             Text(value)
-                .foregroundColor(.white)
+                .foregroundColor(Brand.textPrimary)
         }
-        .listRowBackground(Color(hex: 0x141418))
+        .listRowBackground(Brand.card)
     }
 
-    private func targetRow(label: String, value: String, color: UInt) -> some View {
+    private func targetRow(label: String, value: String, color: Color) -> some View {
         HStack {
             Circle()
-                .fill(Color(hex: color))
+                .fill(color)
                 .frame(width: 8, height: 8)
 
             Text(label)
-                .foregroundColor(.white)
+                .foregroundColor(Brand.textPrimary)
 
             Spacer()
 
             Text(value)
                 .monospacedDigit()
-                .foregroundColor(Color(hex: 0xA0A0B0))
+                .foregroundColor(Brand.textSecondary)
         }
-        .listRowBackground(Color(hex: 0x141418))
+        .listRowBackground(Brand.card)
+    }
+
+    private func safariRow(_ label: String, url: String) -> some View {
+        Button {
+            if let parsed = URL(string: url) {
+                if url.hasPrefix("mailto:") {
+                    UIApplication.shared.open(parsed)
+                } else {
+                    safariURL = parsed
+                }
+            }
+        } label: {
+            HStack {
+                Text(label)
+                    .foregroundColor(Brand.textPrimary)
+                Spacer()
+                Image(systemName: url.hasPrefix("mailto:") ? "envelope" : "arrow.up.right")
+                    .font(.caption)
+                    .foregroundColor(Brand.accent)
+            }
+        }
+        .listRowBackground(Brand.card)
     }
 
     // MARK: - Data
@@ -247,4 +286,19 @@ struct SettingsView: View {
             syncLog = log
         }
     }
+}
+
+// MARK: - Safari View
+
+struct SafariView: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        let vc = SFSafariViewController(url: url)
+        vc.preferredBarTintColor = UIColor(Brand.bg)
+        vc.preferredControlTintColor = UIColor(Brand.accent)
+        return vc
+    }
+
+    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 }

@@ -13,18 +13,18 @@ struct SparklineChart: View {
             HStack {
                 Text(label)
                     .font(.caption.weight(.medium))
-                    .foregroundColor(Color(hex: 0xA0A0B0))
+                    .foregroundColor(Brand.textSecondary)
 
                 Spacer()
 
                 Text(latestValue)
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
-                    .foregroundColor(.white)
+                    .foregroundColor(Brand.textPrimary)
 
                 Text(unit)
                     .font(.caption2)
-                    .foregroundColor(Color(hex: 0x606070))
+                    .foregroundColor(Brand.textMuted)
             }
 
             if dataPoints.count >= 2 {
@@ -57,12 +57,12 @@ struct SparklineChart: View {
                 .frame(height: 40)
             } else {
                 Rectangle()
-                    .fill(Color(hex: 0x1C1C22))
+                    .fill(Brand.elevated)
                     .frame(height: 40)
                     .overlay(
                         Text("Not enough data")
                             .font(.caption2)
-                            .foregroundColor(Color(hex: 0x606070))
+                            .foregroundColor(Brand.textMuted)
                     )
             }
         }
