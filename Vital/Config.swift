@@ -7,6 +7,6 @@ enum Config {
     static let apiBaseURL = URL(string: "https://vital-health-dashboard.vercel.app/api")!
     static let ingestURL = URL(string: "https://vital-health-dashboard.vercel.app/api/ingest/apple-health")!
 
-    static let backgroundTaskIdentifier = "com.vital.health.sync"
+    static let backgroundTaskIdentifier = "com.cesario.vital.sync"
     static let defaultSyncLookbackDays = 7
 }

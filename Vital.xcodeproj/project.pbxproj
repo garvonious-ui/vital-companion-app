@@ -309,7 +309,7 @@
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					1820B6FC800E8BDC6ED21986 = {
-						DevelopmentTeam = FYF873X395;
+						DevelopmentTeam = A3W539C4C3;
 					};
 				};
 			};
@@ -527,14 +527,14 @@
 				CODE_SIGN_ENTITLEMENTS = Vital/Vital.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = FYF873X395;
+				DEVELOPMENT_TEAM = A3W539C4C3;
 				INFOPLIST_FILE = Vital/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.loucesario.vital;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cesario.vital;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -548,14 +548,14 @@
 				CODE_SIGN_ENTITLEMENTS = Vital/Vital.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = FYF873X395;
+				DEVELOPMENT_TEAM = A3W539C4C3;
 				INFOPLIST_FILE = Vital/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.loucesario.vital;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cesario.vital;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

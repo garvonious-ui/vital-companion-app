@@ -132,7 +132,7 @@
 - [x] Emerald palette pass — replaced 287 hardcoded Color(hex:) refs across 23 files with Brand.* colors
 
 ### Polish & Ship
-- [ ] App icon
+- [x] App icon — placeholder emerald V (needs real design)
 - [ ] Figma design file — 6/17 screens exported (rate limited), file: PbVZQjqKOHjBQ9K3seBFjt
 - [x] Tab bar icons + active states
 - [x] Loading skeletons / pull-to-refresh animations
@@ -145,7 +145,15 @@
 - [ ] App Store description
 - [x] Demo account for Apple reviewer (demo@vital.app / VitalDemo2026! — seed script at scripts/seed-demo-user.ts)
 - [x] Upgrade to iOS 26 SDK — Swift 6, @Observable, Sendable models, deployment target 26.0
+- [x] TestFlight — build uploaded, internal + external testing configured
+- [x] Bundle ID registered (com.cesario.vital) + App Store Connect app record created
 - [ ] Submit to App Store
+
+### Web Dashboard (Session 11)
+- [x] Terms of Service page — /terms
+- [x] Public landing page — /home (feature grid, nav, footer)
+- [x] Hide sidebar/nav on public pages (home, terms, privacy)
+- [x] Force-deployed privacy page fix (was stale from Session 10)
 
 ### Backend Fixes (Session 3-4)
 - [x] Bearer token support in createClient() — iOS app can now auth on all API routes

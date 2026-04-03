@@ -72,12 +72,10 @@ struct LabsView: View {
                 EmptyStateView(
                     icon: "cross.case",
                     title: "No Lab Results",
-                    subtitle: "Upload lab PDFs on the web dashboard to see your results here.",
-                    buttonTitle: "Open Web Dashboard",
+                    subtitle: "Upload a lab PDF to have it parsed automatically by AI.",
+                    buttonTitle: "Upload Lab PDF",
                     buttonAction: {
-                        if let url = URL(string: "https://vital-health-dashboard.vercel.app/labs") {
-                            UIApplication.shared.open(url)
-                        }
+                        showDocPicker = true
                     }
                 )
             } else {
