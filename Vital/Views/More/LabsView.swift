@@ -129,19 +129,14 @@ struct LabsView: View {
                 var files: [PickedFile] = []
                 for url in urls {
                     let accessed = url.startAccessingSecurityScopedResource()
-                    print("[LabUpload] URL: \(url.lastPathComponent), accessed: \(accessed)")
                     if let data = try? Data(contentsOf: url) {
                         let ext = url.pathExtension.lowercased()
                         let ct = ext == "png" ? "image/png" : ext == "jpg" || ext == "jpeg" ? "image/jpeg" : "application/pdf"
                         let fn = ext == "png" ? "labs.png" : ext == "jpg" || ext == "jpeg" ? "labs.jpg" : "labs.pdf"
                         files.append(PickedFile(data: data, contentType: ct, filename: fn))
-                        print("[LabUpload] Read \(data.count) bytes, type: \(ct)")
-                    } else {
-                        print("[LabUpload] Failed to read data from URL")
                     }
                     if accessed { url.stopAccessingSecurityScopedResource() }
                 }
-                print("[LabUpload] Picked \(files.count) files")
                 DispatchQueue.main.async {
                     pickedFiles = files
                 }
@@ -149,7 +144,6 @@ struct LabsView: View {
         }
         .onChange(of: pickedFiles) { _, files in
             guard !files.isEmpty else { return }
-            print("[LabUpload] onChange triggered with \(files.count) files")
             Task {
                 for file in files {
                     await uploadFileData(file)
