@@ -114,7 +114,9 @@ struct SupplementsView: View {
         .sheet(item: $editingSupplement, onDismiss: {
             Task { await loadData() }
         }) { supp in
-            SupplementFormView(supplement: supp)
+            SupplementFormView(supplement: supp, onDelete: { target in
+                Task { await deleteSupplement(target) }
+            })
         }
         .confirmationDialog("Delete \(deleteTarget?.name ?? "supplement")?", isPresented: Binding(
             get: { deleteTarget != nil },
@@ -199,13 +201,6 @@ struct SupplementsView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
         } // close Button label
-        .swipeActions(edge: .trailing) {
-            Button(role: .destructive) {
-                deleteTarget = supp
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        }
     }
 
     @ViewBuilder

@@ -41,7 +41,7 @@ struct MoreView: View {
                             title: "AI Health Chat",
                             subtitle: "Ask about your health data"
                         ) {
-                            ChatView()
+                            ChatHistoryView()
                         }
 
                         // Connect devices

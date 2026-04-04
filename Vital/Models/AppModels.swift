@@ -285,20 +285,43 @@ struct ChatRequest: Codable, Sendable {
     let message: String
 }
 
-struct ChatMessage: Identifiable {
-    let id = UUID()
+struct ChatMessage: Identifiable, Codable, Sendable {
+    let id: UUID
     let role: ChatRole
     var content: String
     let timestamp: Date
 
     init(role: ChatRole, content: String) {
+        self.id = UUID()
         self.role = role
         self.content = content
         self.timestamp = Date()
     }
 }
 
-enum ChatRole {
+enum ChatRole: String, Codable, Sendable {
     case user
     case assistant
+}
+
+struct ChatConversation: Identifiable, Codable, Sendable {
+    let id: UUID
+    var messages: [ChatMessage]
+    let createdAt: Date
+    var title: String
+
+    init(messages: [ChatMessage] = []) {
+        self.id = UUID()
+        self.messages = messages
+        self.createdAt = Date()
+        self.title = "New Chat"
+    }
+
+    /// Derive title from first user message
+    mutating func updateTitle() {
+        if let first = messages.first(where: { $0.role == .user }) {
+            title = String(first.content.prefix(50))
+            if first.content.count > 50 { title += "..." }
+        }
+    }
 }

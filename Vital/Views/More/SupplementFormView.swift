@@ -5,6 +5,7 @@ struct SupplementFormView: View {
     @Environment(\.dismiss) var dismiss
 
     let supplement: Supplement?
+    var onDelete: ((Supplement) -> Void)?
 
     @State private var name: String = ""
     @State private var type: String = "Supplement"
@@ -16,6 +17,7 @@ struct SupplementFormView: View {
     @State private var notes: String = ""
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @State private var showDeleteConfirm = false
 
     private let types = ["Prescription", "Supplement", "OTC"]
     private let timings = ["Morning", "With Meals", "Pre-Workout", "Post-Workout", "Evening", "As Needed"]
@@ -100,6 +102,28 @@ struct SupplementFormView: View {
                             .cornerRadius(12)
                         }
                         .disabled(name.isEmpty || isSaving)
+
+                        // Delete button (edit mode only)
+                        if isEditing, let supp = supplement {
+                            Button {
+                                showDeleteConfirm = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "trash")
+                                    Text("Delete Supplement")
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .foregroundColor(Brand.critical)
+                            }
+                            .confirmationDialog("Delete \(supp.name)?", isPresented: $showDeleteConfirm) {
+                                Button("Delete", role: .destructive) {
+                                    onDelete?(supp)
+                                    dismiss()
+                                }
+                                Button("Cancel", role: .cancel) {}
+                            }
+                        }
                     }
                     .padding(16)
                 }

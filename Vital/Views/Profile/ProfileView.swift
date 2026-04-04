@@ -12,6 +12,8 @@ struct ProfileView: View {
     @State private var isLoading = true
     @State private var showChat = false
     @State private var showSignOutConfirm = false
+    @State private var showWeightEdit = false
+    @State private var weightInput: String = ""
 
     // Trends
     private var last7Days: [DailyMetric] {
@@ -60,7 +62,7 @@ struct ProfileView: View {
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showChat) {
                 NavigationStack {
-                    ChatView()
+                    ChatHistoryView()
                         .toolbar {
                             ToolbarItem(placement: .navigationBarLeading) {
                                 Button("Done") { showChat = false }
@@ -106,19 +108,64 @@ struct ProfileView: View {
                 .font(.title3.weight(.bold))
                 .foregroundColor(Brand.textPrimary)
 
-            // Subtitle: age + height + weight
-            let details = profileSubtitle
-            if !details.isEmpty {
-                Text(details)
-                    .font(.caption)
-                    .foregroundColor(Brand.textMuted)
+            // Subtitle: age + height + weight (weight is tappable)
+            HStack(spacing: 4) {
+                if let ageHeight = ageHeightSubtitle {
+                    Text(ageHeight)
+                        .font(.caption)
+                        .foregroundColor(Brand.textMuted)
+                }
+                if let w = currentWeight {
+                    if ageHeightSubtitle != nil {
+                        Text("·")
+                            .font(.caption)
+                            .foregroundColor(Brand.textMuted)
+                    }
+                    Button {
+                        weightInput = "\(Int(w))"
+                        showWeightEdit = true
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text("\(Int(w)) lbs")
+                                .font(.caption)
+                                .foregroundColor(Brand.accent)
+                            Image(systemName: "pencil")
+                                .font(.system(size: 8))
+                                .foregroundColor(Brand.accent)
+                        }
+                    }
+                } else {
+                    Button {
+                        weightInput = ""
+                        showWeightEdit = true
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text("Add weight")
+                                .font(.caption)
+                                .foregroundColor(Brand.accent)
+                            Image(systemName: "plus")
+                                .font(.system(size: 8))
+                                .foregroundColor(Brand.accent)
+                        }
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
+        .alert("Update Weight", isPresented: $showWeightEdit) {
+            TextField("Weight in lbs", text: $weightInput)
+                .keyboardType(.numberPad)
+            Button("Save") {
+                Task { await saveWeight() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Enter your current weight in pounds")
+        }
     }
 
-    private var profileSubtitle: String {
+    private var ageHeightSubtitle: String? {
         var parts: [String] = []
         if let dob = profile?.dateOfBirth, let age = ageFromDOB(dob) {
             parts.append("\(age)y")
@@ -128,10 +175,13 @@ struct ProfileView: View {
             let inches = Int(h) % 12
             parts.append("\(feet)'\(inches)\"")
         }
-        if let w = profile?.weightLbs {
-            parts.append("\(Int(w)) lbs")
-        }
-        return parts.joined(separator: " · ")
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private var currentWeight: Double? {
+        // Check latest metric first (from HealthKit sync), then profile
+        let fromMetrics = metrics.sorted { $0.date > $1.date }.first(where: { $0.weightLbs != nil })?.weightLbs
+        return fromMetrics ?? profile?.weightLbs
     }
 
     private func ageFromDOB(_ dobStr: String) -> Int? {
@@ -151,7 +201,7 @@ struct ProfileView: View {
             HStack(spacing: 10) {
                 Image(systemName: "sparkles")
                     .font(.body)
-                Text("Ask Vital about your health")
+                Text("AI Insights")
                     .font(.subheadline.weight(.semibold))
             }
             .frame(maxWidth: .infinity)
@@ -470,13 +520,6 @@ struct ProfileView: View {
 
                 Divider().background(Color.white.opacity(0.06)).padding(.leading, 52)
 
-                // Web dashboard
-                Link(destination: URL(string: "https://vital-health-dashboard.vercel.app")!) {
-                    settingsRow(icon: "globe", title: "Web Dashboard", trailing: "arrow.up.right")
-                }
-
-                Divider().background(Color.white.opacity(0.06)).padding(.leading, 52)
-
                 // Privacy
                 Link(destination: URL(string: "https://vital-health-dashboard.vercel.app/privacy")!) {
                     settingsRow(icon: "hand.raised.fill", title: "Privacy Policy", trailing: "arrow.up.right")
@@ -536,6 +579,28 @@ struct ProfileView: View {
         let out = DateFormatter()
         out.dateFormat = "MMM d"
         return out.string(from: date)
+    }
+
+    // MARK: - Weight
+
+    private func saveWeight() async {
+        guard let weight = Double(weightInput), weight > 0 else { return }
+
+        let dateStr = {
+            let f = DateFormatter()
+            f.dateFormat = "yyyy-MM-dd"
+            return f.string(from: Date())
+        }()
+
+        let body: [String: Any] = ["date": dateStr, "weightLbs": weight]
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: body)
+            let _: SuccessResponse = try await apiService.patchRaw("/metrics", jsonData: jsonData)
+            HapticManager.success()
+            await loadData() // Refresh to show updated weight
+        } catch {
+            print("[Profile] Failed to save weight: \(error)")
+        }
     }
 
     // MARK: - Data

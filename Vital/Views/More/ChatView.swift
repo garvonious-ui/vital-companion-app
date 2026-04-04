@@ -2,11 +2,19 @@ import SwiftUI
 
 struct ChatView: View {
     @Environment(APIService.self) var apiService
+    @Environment(ChatHistoryManager.self) var chatHistory
 
-    @State private var messages: [ChatMessage] = []
+    let existingConversation: ChatConversation?
+
+    @State private var conversation: ChatConversation
     @State private var inputText: String = ""
     @State private var isStreaming = false
     @State private var streamTask: Task<Void, Never>?
+
+    init(existingConversation: ChatConversation?) {
+        self.existingConversation = existingConversation
+        self._conversation = State(initialValue: existingConversation ?? ChatConversation())
+    }
 
     var body: some View {
         ZStack {
@@ -17,12 +25,12 @@ struct ChatView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 12) {
-                            if messages.isEmpty {
+                            if conversation.messages.isEmpty {
                                 welcomeCard
                                     .padding(.top, 40)
                             }
 
-                            ForEach(messages) { message in
+                            ForEach(conversation.messages) { message in
                                 messageBubble(message)
                                     .id(message.id)
                             }
@@ -30,8 +38,8 @@ struct ChatView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
                     }
-                    .onChange(of: messages.count) { _, _ in
-                        if let last = messages.last {
+                    .onChange(of: conversation.messages.count) { _, _ in
+                        if let last = conversation.messages.last {
                             withAnimation {
                                 proxy.scrollTo(last.id, anchor: .bottom)
                             }
@@ -47,6 +55,11 @@ struct ChatView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onDisappear {
             streamTask?.cancel()
+            // Save conversation if it has messages
+            if !conversation.messages.isEmpty {
+                conversation.updateTitle()
+                chatHistory.save(conversation)
+            }
         }
     }
 
@@ -110,7 +123,7 @@ struct ChatView: View {
                     .lineSpacing(4)
                     .textSelection(.enabled)
 
-                if message.role == .assistant && isStreaming && message.id == messages.last?.id {
+                if message.role == .assistant && isStreaming && message.id == conversation.messages.last?.id {
                     HStack(spacing: 4) {
                         Circle().fill(Brand.secondary).frame(width: 4, height: 4)
                             .opacity(0.6)
@@ -194,12 +207,12 @@ struct ChatView: View {
         guard !text.isEmpty else { return }
 
         inputText = ""
-        messages.append(ChatMessage(role: .user, content: text))
+        conversation.messages.append(ChatMessage(role: .user, content: text))
 
         // Add placeholder for assistant
         let assistantMessage = ChatMessage(role: .assistant, content: "")
-        messages.append(assistantMessage)
-        let assistantIndex = messages.count - 1
+        conversation.messages.append(assistantMessage)
+        let assistantIndex = conversation.messages.count - 1
 
         isStreaming = true
 
@@ -209,7 +222,7 @@ struct ChatView: View {
                 let (bytes, response) = try await apiService.postStream("/ai/chat", body: body)
 
                 guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                    messages[assistantIndex].content = "Sorry, I couldn't get a response. Please try again."
+                    conversation.messages[assistantIndex].content = "Sorry, I couldn't get a response. Please try again."
                     isStreaming = false
                     return
                 }
@@ -232,19 +245,19 @@ struct ChatView: View {
                             // Only extract text from "text" type events
                             if type == "text", let text = json["text"] as? String {
                                 await MainActor.run {
-                                    messages[assistantIndex].content += text
+                                    conversation.messages[assistantIndex].content += text
                                 }
                             } else if type == "content", let text = json["content"] as? String {
                                 // Alternate format
                                 await MainActor.run {
-                                    messages[assistantIndex].content += text
+                                    conversation.messages[assistantIndex].content += text
                                 }
                             }
                             // Skip conversation_id, remaining, and other control events
                         } else if !data.starts(with: "{") {
                             // Plain text token (not JSON)
                             await MainActor.run {
-                                messages[assistantIndex].content += data
+                                conversation.messages[assistantIndex].content += data
                             }
                         }
                     }
@@ -252,8 +265,8 @@ struct ChatView: View {
             } catch {
                 if !Task.isCancelled {
                     await MainActor.run {
-                        if messages[assistantIndex].content.isEmpty {
-                            messages[assistantIndex].content = "Connection error. Please try again."
+                        if conversation.messages[assistantIndex].content.isEmpty {
+                            conversation.messages[assistantIndex].content = "Connection error. Please try again."
                         }
                     }
                 }
@@ -261,6 +274,9 @@ struct ChatView: View {
 
             await MainActor.run {
                 isStreaming = false
+                // Auto-save after each response
+                conversation.updateTitle()
+                chatHistory.save(conversation)
             }
         }
     }

@@ -189,7 +189,7 @@ struct TodayView: View {
             .navigationBarHidden(true)
             .sheet(isPresented: $showChat) {
                 NavigationStack {
-                    ChatView()
+                    ChatHistoryView()
                         .toolbar {
                             ToolbarItem(placement: .navigationBarLeading) {
                                 Button("Done") { showChat = false }
@@ -612,7 +612,7 @@ struct TodayView: View {
         .buttonStyle(PressScaleButtonStyle())
     }
 
-    // MARK: - Ask Vital Button
+    // MARK: - AI Insights Button
 
     private var askVitalButton: some View {
         Button {
@@ -622,7 +622,7 @@ struct TodayView: View {
             HStack(spacing: 10) {
                 Image(systemName: "sparkles")
                     .font(.body)
-                Text("Ask Vital")
+                Text("AI Insights")
                     .font(.subheadline.weight(.semibold))
             }
             .frame(maxWidth: .infinity)

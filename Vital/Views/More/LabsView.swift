@@ -72,8 +72,8 @@ struct LabsView: View {
                 EmptyStateView(
                     icon: "cross.case",
                     title: "No Lab Results",
-                    subtitle: "Upload a lab PDF to have it parsed automatically by AI.",
-                    buttonTitle: "Upload Lab PDF",
+                    subtitle: "Upload a lab PDF or screenshot to have it parsed automatically by AI.",
+                    buttonTitle: "Upload Lab Results",
                     buttonAction: {
                         showDocPicker = true
                     }
@@ -159,7 +159,7 @@ struct LabsView: View {
                             Text("Upload Lab Results")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundColor(Brand.textPrimary)
-                            Text("PDF auto-parsed by AI")
+                            Text("PDF or screenshot, auto-parsed by AI")
                                 .font(.caption)
                                 .foregroundColor(Brand.textMuted)
                         }
@@ -215,15 +215,23 @@ struct LabsView: View {
         defer { url.stopAccessingSecurityScopedResource() }
 
         do {
-            let pdfData = try Data(contentsOf: url)
+            let fileData = try Data(contentsOf: url)
+
+            // Detect file type
+            let ext = url.pathExtension.lowercased()
+            let (contentType, filename): (String, String) = switch ext {
+            case "png": ("image/png", "labs.png")
+            case "jpg", "jpeg": ("image/jpeg", "labs.jpg")
+            default: ("application/pdf", "labs.pdf")
+            }
 
             // Build multipart form data
             let boundary = UUID().uuidString
             var body = Data()
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"file\"; filename=\"labs.pdf\"\r\n".data(using: .utf8)!)
-            body.append("Content-Type: application/pdf\r\n\r\n".data(using: .utf8)!)
-            body.append(pdfData)
+            body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: \(contentType)\r\n\r\n".data(using: .utf8)!)
+            body.append(fileData)
             body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
 
             guard let token = await apiService.authService.accessToken() else {
@@ -278,7 +286,7 @@ struct LabsView: View {
                         "notes": result.notes,
                     ]
                     let jsonData = try JSONSerialization.data(withJSONObject: labBody.compactMapValues { $0 })
-                    let _: APIResponse<String?> = try await apiService.postRaw("/labs", jsonData: jsonData)
+                    let _: SuccessResponse = try await apiService.postRaw("/labs", jsonData: jsonData)
                     saved += 1
                 } catch {
                     // Continue saving rest
