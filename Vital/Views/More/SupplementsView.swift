@@ -9,6 +9,7 @@ struct SupplementsView: View {
     @State private var showAddForm = false
     @State private var editingSupplement: Supplement?
     @State private var deleteTarget: Supplement?
+    @State private var showScan = false
 
     private var activeSupplements: [Supplement] {
         supplements.filter { $0.active != false }
@@ -98,13 +99,26 @@ struct SupplementsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showAddForm = true
-                } label: {
-                    Image(systemName: "plus")
-                        .foregroundColor(Brand.accent)
+                HStack(spacing: 16) {
+                    Button {
+                        showScan = true
+                    } label: {
+                        Image(systemName: "camera.fill")
+                            .foregroundColor(Brand.accent)
+                    }
+                    Button {
+                        showAddForm = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .foregroundColor(Brand.accent)
+                    }
                 }
             }
+        }
+        .sheet(isPresented: $showScan, onDismiss: {
+            Task { await loadData() }
+        }) {
+            SupplementScanView()
         }
         .sheet(isPresented: $showAddForm, onDismiss: {
             Task { await loadData() }

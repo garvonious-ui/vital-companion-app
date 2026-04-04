@@ -122,6 +122,11 @@ struct LabsView: View {
         }
         .navigationTitle("Lab Results")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showDocPicker) {
+            DocumentPicker { url in
+                Task { await uploadPDF(url: url) }
+            }
+        }
         .task {
             await loadLabs()
         }
@@ -192,11 +197,6 @@ struct LabsView: View {
                     .font(.caption)
                     .foregroundColor(msg.contains("Error") || msg.contains("Failed") ? Brand.critical : Brand.optimal)
                     .transition(.opacity)
-            }
-        }
-        .sheet(isPresented: $showDocPicker) {
-            DocumentPicker { url in
-                Task { await uploadPDF(url: url) }
             }
         }
     }

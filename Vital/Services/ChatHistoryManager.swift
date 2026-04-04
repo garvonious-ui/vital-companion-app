@@ -1,7 +1,8 @@
 import Foundation
 
 @Observable
-final class ChatHistoryManager: Sendable {
+@MainActor
+final class ChatHistoryManager {
     private(set) var conversations: [ChatConversation] = []
 
     private static var fileURL: URL {

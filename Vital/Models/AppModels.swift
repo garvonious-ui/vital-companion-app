@@ -304,7 +304,9 @@ enum ChatRole: String, Codable, Sendable {
     case assistant
 }
 
-struct ChatConversation: Identifiable, Codable, Sendable {
+struct ChatConversation: Identifiable, Codable, Sendable, Hashable {
+    static func == (lhs: ChatConversation, rhs: ChatConversation) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
     let id: UUID
     var messages: [ChatMessage]
     let createdAt: Date
