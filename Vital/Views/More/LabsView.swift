@@ -123,38 +123,38 @@ struct LabsView: View {
         }
         .navigationTitle("Lab Results")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showDocPicker, onDismiss: {
-            guard !pickedFiles.isEmpty else { return }
-            let files = pickedFiles
-            pickedFiles = []
-            Task {
-                for file in files {
-                    await uploadFileData(file)
-                }
-            }
-        }) {
+        .sheet(isPresented: $showDocPicker) {
             DocumentPicker { urls in
                 // Read file data NOW while security-scoped URLs are still valid
                 var files: [PickedFile] = []
                 for url in urls {
-                    guard url.startAccessingSecurityScopedResource() else { continue }
-                    defer { url.stopAccessingSecurityScopedResource() }
+                    let accessed = url.startAccessingSecurityScopedResource()
+                    print("[LabUpload] URL: \(url.lastPathComponent), accessed: \(accessed)")
                     if let data = try? Data(contentsOf: url) {
                         let ext = url.pathExtension.lowercased()
-                        let contentType: String = switch ext {
-                        case "png": "image/png"
-                        case "jpg", "jpeg": "image/jpeg"
-                        default: "application/pdf"
-                        }
-                        let filename: String = switch ext {
-                        case "png": "labs.png"
-                        case "jpg", "jpeg": "labs.jpg"
-                        default: "labs.pdf"
-                        }
-                        files.append(PickedFile(data: data, contentType: contentType, filename: filename))
+                        let ct = ext == "png" ? "image/png" : ext == "jpg" || ext == "jpeg" ? "image/jpeg" : "application/pdf"
+                        let fn = ext == "png" ? "labs.png" : ext == "jpg" || ext == "jpeg" ? "labs.jpg" : "labs.pdf"
+                        files.append(PickedFile(data: data, contentType: ct, filename: fn))
+                        print("[LabUpload] Read \(data.count) bytes, type: \(ct)")
+                    } else {
+                        print("[LabUpload] Failed to read data from URL")
                     }
+                    if accessed { url.stopAccessingSecurityScopedResource() }
                 }
-                pickedFiles = files
+                print("[LabUpload] Picked \(files.count) files")
+                DispatchQueue.main.async {
+                    pickedFiles = files
+                }
+            }
+        }
+        .onChange(of: pickedFiles) { _, files in
+            guard !files.isEmpty else { return }
+            print("[LabUpload] onChange triggered with \(files.count) files")
+            Task {
+                for file in files {
+                    await uploadFileData(file)
+                }
+                pickedFiles = []
             }
         }
         .task {
