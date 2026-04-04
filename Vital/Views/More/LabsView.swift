@@ -11,6 +11,7 @@ struct LabsView: View {
     @State private var showDocPicker = false
     @State private var isUploading = false
     @State private var uploadMessage: String?
+    @State private var pickedURLs: [URL] = []
 
     private let filterOptions = ["All", "Flagged", "Lipids", "Metabolic", "CBC", "Kidney", "Liver", "Hormones", "Thyroid", "Vitamins & Minerals", "Inflammation", "Infectious"]
 
@@ -122,9 +123,18 @@ struct LabsView: View {
         }
         .navigationTitle("Lab Results")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showDocPicker) {
-            DocumentPicker { url in
-                Task { await uploadPDF(url: url) }
+        .sheet(isPresented: $showDocPicker, onDismiss: {
+            guard !pickedURLs.isEmpty else { return }
+            let urls = pickedURLs
+            pickedURLs = []
+            Task {
+                for url in urls {
+                    await uploadFile(url: url)
+                }
+            }
+        }) {
+            DocumentPicker { urls in
+                pickedURLs = urls
             }
         }
         .task {
@@ -203,7 +213,7 @@ struct LabsView: View {
 
     // MARK: - Upload Logic
 
-    private func uploadPDF(url: URL) async {
+    private func uploadFile(url: URL) async {
         isUploading = true
         uploadMessage = nil
 
