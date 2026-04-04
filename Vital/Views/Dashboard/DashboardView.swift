@@ -21,32 +21,31 @@ struct DashboardView: View {
         Array(metrics.prefix(7))
     }
 
-    // MARK: - Recovery Score
-    // HRV 50% + RHR 30% + Sleep 20%
+    // MARK: - Recovery Score (HRV 50% + RHR 30% + Sleep 20%, redistributed if missing)
 
     private var recoveryScore: Int {
         guard let m = today else { return 0 }
 
-        // HRV score: baseline ~40ms, good ~60ms+, scale 0-100
-        let hrvScore: Double = {
-            guard let hrv = m.heartRateVariability else { return 0 }
-            return min(max((hrv - 15) / 0.65, 0), 100)  // 15ms → 0, 80ms → 100
-        }()
+        var components: [(score: Double, weight: Double)] = []
 
-        // RHR score: lower is better, 50bpm → 100, 80bpm → 0
-        let rhrScore: Double = {
-            guard let rhr = m.restingHeartRate else { return 0 }
-            return min(max((80 - rhr) / 0.3, 0), 100)  // 80 → 0, 50 → 100
-        }()
+        if let hrv = m.heartRateVariability {
+            let score = min(max((hrv - 15) / 0.65, 0), 100)
+            components.append((score, 0.5))
+        }
+        if let rhr = m.restingHeartRate {
+            let score = min(max((80 - rhr) / 0.3, 0), 100)
+            components.append((score, 0.3))
+        }
+        if let sleep = m.sleepHours {
+            let score = min(max((sleep - 4) / 0.04, 0), 100)
+            components.append((score, 0.2))
+        }
 
-        // Sleep score: 8h → 100, <5h → 0
-        let sleepScore: Double = {
-            guard let sleep = m.sleepHours else { return 0 }
-            return min(max((sleep - 4) / 0.04, 0), 100)  // 4h → 0, 8h → 100
-        }()
+        guard !components.isEmpty else { return 0 }
 
-        let score = hrvScore * 0.5 + rhrScore * 0.3 + sleepScore * 0.2
-        return Int(score.rounded())
+        let totalWeight = components.reduce(0.0) { $0 + $1.weight }
+        let weighted = components.reduce(0.0) { $0 + $1.score * ($1.weight / totalWeight) }
+        return Int(weighted.rounded())
     }
 
     // MARK: - Streak

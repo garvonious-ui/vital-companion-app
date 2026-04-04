@@ -197,9 +197,9 @@ struct SupplementFormView: View {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: body)
             if isEditing {
-                let _: APIResponse<String?> = try await apiService.patchRaw("/supplements", jsonData: jsonData)
+                let _: SuccessResponse = try await apiService.patchRaw("/supplements", jsonData: jsonData)
             } else {
-                let _: APIResponse<String?> = try await apiService.postRaw("/supplements", jsonData: jsonData)
+                let _: SuccessResponse = try await apiService.postRaw("/supplements", jsonData: jsonData)
             }
             HapticManager.success()
             dismiss()

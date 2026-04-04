@@ -127,7 +127,11 @@ struct MainTabView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active && hasLaunched {
-                Task { await syncService.sync() }
+                Task {
+                    // Refresh token first — it may have expired while backgrounded
+                    _ = await authService.refreshSession()
+                    await syncService.sync()
+                }
             }
         }
         } // close VStack

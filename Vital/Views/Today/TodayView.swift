@@ -6,6 +6,8 @@ struct TodayView: View {
     @Environment(AuthService.self) var authService
     @Environment(SyncService.self) var syncService
 
+    @Environment(\.scenePhase) private var scenePhase
+
     @State private var metrics: [DailyMetric] = []
     @State private var targets: UserTargets?
     @State private var profile: UserProfile?
@@ -36,23 +38,33 @@ struct TodayView: View {
         Array(metrics.prefix(7))
     }
 
-    // MARK: - Recovery Score (HRV 50% + RHR 30% + Sleep 20%)
+    // MARK: - Recovery Score (HRV 50% + RHR 30% + Sleep 20%, redistributed if missing)
 
     private var recoveryScore: Int {
         guard let m = today else { return 0 }
-        let hrvScore: Double = {
-            guard let hrv = m.heartRateVariability else { return 0 }
-            return min(max((hrv - 15) / 0.65, 0), 100)
-        }()
-        let rhrScore: Double = {
-            guard let rhr = m.restingHeartRate else { return 0 }
-            return min(max((80 - rhr) / 0.3, 0), 100)
-        }()
-        let sleepScore: Double = {
-            guard let sleep = m.sleepHours else { return 0 }
-            return min(max((sleep - 4) / 0.04, 0), 100)
-        }()
-        return Int((hrvScore * 0.5 + rhrScore * 0.3 + sleepScore * 0.2).rounded())
+
+        // Build available components with base weights
+        var components: [(score: Double, weight: Double)] = []
+
+        if let hrv = m.heartRateVariability {
+            let score = min(max((hrv - 15) / 0.65, 0), 100)
+            components.append((score, 0.5))
+        }
+        if let rhr = m.restingHeartRate {
+            let score = min(max((80 - rhr) / 0.3, 0), 100)
+            components.append((score, 0.3))
+        }
+        if let sleep = m.sleepHours {
+            let score = min(max((sleep - 4) / 0.04, 0), 100)
+            components.append((score, 0.2))
+        }
+
+        guard !components.isEmpty else { return 0 }
+
+        // Redistribute weights proportionally across available components
+        let totalWeight = components.reduce(0.0) { $0 + $1.weight }
+        let weighted = components.reduce(0.0) { $0 + $1.score * ($1.weight / totalWeight) }
+        return Int(weighted.rounded())
     }
 
     // MARK: - Recovery Verdict
@@ -207,6 +219,15 @@ struct TodayView: View {
             .onChange(of: syncService.isSyncing) { _, syncing in
                 // Only reload after sync if last load was >3s ago (avoids double-load on launch)
                 if !syncing && Date().timeIntervalSince(lastLoadTime) > 3 {
+                    Task {
+                        await loadData()
+                        lastLoadTime = Date()
+                    }
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                // Retry loading when returning to foreground if in error state
+                if newPhase == .active && errorMessage != nil {
                     Task {
                         await loadData()
                         lastLoadTime = Date()

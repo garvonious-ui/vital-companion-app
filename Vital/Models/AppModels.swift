@@ -8,6 +8,12 @@ struct APIResponse<T: Decodable & Sendable>: Decodable, Sendable {
     let error: String?
 }
 
+/// For endpoints that return `{ success: true }` with no data field
+struct SuccessResponse: Decodable, Sendable {
+    let success: Bool
+    let error: String?
+}
+
 // MARK: - Daily Metrics
 // API returns: id, date, weightLbs, sleepHours, sleepQuality, hrvMs, restingHR, vo2Max,
 //              steps, activeCalories, exerciseMinutes, waterOz, mood, energy, focus, notes
