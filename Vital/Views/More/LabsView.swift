@@ -69,7 +69,7 @@ struct LabsView: View {
                         .multilineTextAlignment(.center)
                 }
                 .padding()
-            } else if results.isEmpty {
+            } else if results.isEmpty && !isUploading {
                 EmptyStateView(
                     icon: "cross.case",
                     title: "No Lab Results",
@@ -79,6 +79,18 @@ struct LabsView: View {
                         showDocPicker = true
                     }
                 )
+            } else if results.isEmpty && isUploading {
+                VStack(spacing: 16) {
+                    ProgressView().tint(Brand.accent)
+                    Text("Parsing lab results with AI...")
+                        .font(.subheadline)
+                        .foregroundColor(Brand.textSecondary)
+                    if let msg = uploadMessage {
+                        Text(msg)
+                            .font(.caption)
+                            .foregroundColor(Brand.textMuted)
+                    }
+                }
             } else {
                 ScrollView {
                     VStack(spacing: 16) {
