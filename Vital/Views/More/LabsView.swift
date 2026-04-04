@@ -70,15 +70,24 @@ struct LabsView: View {
                 }
                 .padding()
             } else if results.isEmpty && !isUploading {
-                EmptyStateView(
-                    icon: "cross.case",
-                    title: "No Lab Results",
-                    subtitle: "Upload a lab PDF or screenshot to have it parsed automatically by AI.",
-                    buttonTitle: "Upload Lab Results",
-                    buttonAction: {
-                        showDocPicker = true
+                VStack(spacing: 16) {
+                    EmptyStateView(
+                        icon: "cross.case",
+                        title: "No Lab Results",
+                        subtitle: "Upload a lab PDF or screenshot to have it parsed automatically by AI.",
+                        buttonTitle: "Upload Lab Results",
+                        buttonAction: {
+                            showDocPicker = true
+                        }
+                    )
+                    if let msg = uploadMessage {
+                        Text(msg)
+                            .font(.caption)
+                            .foregroundColor(msg.contains("Error") || msg.contains("Failed") ? Brand.critical : Brand.optimal)
+                            .padding(.horizontal, 16)
+                            .multilineTextAlignment(.center)
                     }
-                )
+                }
             } else if results.isEmpty && isUploading {
                 VStack(spacing: 16) {
                     ProgressView().tint(Brand.accent)

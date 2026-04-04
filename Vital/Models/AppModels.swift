@@ -263,7 +263,7 @@ struct UserProfile: Codable, Sendable {
 //              optimalLow, optimalHigh, status, trend, category, drawDate, labProvider, notes
 
 struct LabResult: Codable, Identifiable, Sendable {
-    let id: String
+    var id: String
     let testName: String
     let yourValue: Double?
     let unit: String?
@@ -277,6 +277,24 @@ struct LabResult: Codable, Identifiable, Sendable {
     let drawDate: String?
     let labProvider: String?
     let notes: String?
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decode(String.self, forKey: .id)) ?? UUID().uuidString
+        testName = try c.decode(String.self, forKey: .testName)
+        yourValue = try c.decodeIfPresent(Double.self, forKey: .yourValue)
+        unit = try c.decodeIfPresent(String.self, forKey: .unit)
+        labReferenceLow = try c.decodeIfPresent(Double.self, forKey: .labReferenceLow)
+        labReferenceHigh = try c.decodeIfPresent(Double.self, forKey: .labReferenceHigh)
+        optimalLow = try c.decodeIfPresent(Double.self, forKey: .optimalLow)
+        optimalHigh = try c.decodeIfPresent(Double.self, forKey: .optimalHigh)
+        status = try c.decodeIfPresent(String.self, forKey: .status)
+        trend = try c.decodeIfPresent(String.self, forKey: .trend)
+        category = try c.decodeIfPresent(String.self, forKey: .category)
+        drawDate = try c.decodeIfPresent(String.self, forKey: .drawDate)
+        labProvider = try c.decodeIfPresent(String.self, forKey: .labProvider)
+        notes = try c.decodeIfPresent(String.self, forKey: .notes)
+    }
 }
 
 // MARK: - AI Chat
