@@ -104,9 +104,12 @@ import Observation
                     )]
                 } else {
                     metricSamples = samples.map { sample in
-                        MetricSample(
+                        var value = sample.quantity.doubleValue(for: unit)
+                        // SpO2 comes as 0.0-1.0 fraction, convert to percentage
+                        if name == "oxygen_saturation" { value *= 100 }
+                        return MetricSample(
                             date: formatDate(sample.startDate),
-                            qty: sample.quantity.doubleValue(for: unit)
+                            qty: value
                         )
                     }
                 }
