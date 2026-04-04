@@ -115,6 +115,21 @@
 - [x] Sleep card on Today taps to SleepDetailView instead of generic MetricDetailView
 - [x] Added HKQuantityType(.heartRate) to HealthKit read permissions
 
+### Session 13-14 Features
+- [x] Recovery score — redistributes weights when sleep/HRV/RHR missing
+- [x] Chat history — conversations saved locally, ChatHistoryView with history list
+- [x] Supplement save/delete fix — SuccessResponse for endpoints returning no data
+- [x] Supplement delete button in edit form (swipe didn't work in ScrollView)
+- [x] Supplement photo scan — camera capture → Claude Vision → bulk save
+- [x] Lab upload fix — multi-file, reads data before picker dismisses, works from empty state
+- [x] Lab image upload — PNG/JPEG screenshots accepted (backend + iOS)
+- [x] Lab parse decode fix — LabResult.id defaults to UUID when missing
+- [x] Weight editable in profile header
+- [x] Background resume — refresh auth token, auto-retry on error state
+- [x] SpO2 display fix — multiply HealthKit fraction by 100
+- [x] Renamed "Ask Vital" → "AI Insights" everywhere
+- [x] Removed Web Dashboard link from profile settings
+
 ### Bug Fixes (Session 10)
 - [x] Double load on app launch — debounce TodayView onChange reload (3s threshold), skip scenePhase sync on first launch
 - [x] Privacy policy requires login — added /privacy to public routes in web middleware

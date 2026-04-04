@@ -1,5 +1,114 @@
 # Changelog — Vital Companion App
 
+## 2026-04-03 — Sessions 13-14
+
+### Recovery Score Fix
+- Weights now redistribute proportionally when metrics are missing (no longer penalized for not tracking sleep)
+- E.g., no sleep → HRV 62.5% + RHR 37.5% instead of capping at 80
+- Updated in both TodayView and DashboardView
+
+### Chat History
+- **ChatHistoryManager.swift** — saves/loads conversations as JSON in app documents directory (keeps last 50)
+- **ChatHistoryView.swift** — lists previous conversations with title, message count, date; new chat button; swipe-to-delete
+- **ChatView.swift** — accepts existing conversation, auto-saves after each AI response and on dismiss
+- All entry points (Today, Profile, MoreView) now open ChatHistoryView instead of fresh ChatView
+- Renamed "Ask Vital" → "AI Insights" everywhere
+
+### Supplement Photo Scan (New Feature)
+- **POST /api/supplements/analyze** (Vercel) — Claude Vision identifies supplement bottles, returns name/type/dosage/timing/reason/brand
+- **SupplementScanView.swift** — camera or photo library, analyzing state, results with checkboxes, bulk save
+- Camera icon added to SupplementsView toolbar
+- Maps AI output to DB check constraints (type: Prescription/Supplement/OTC, timing: Morning/Afternoon/Evening/With Food/Empty Stomach, status: Active/Paused/Stopped/Recommended)
+
+### Supplement CRUD Fixes
+- **Save fix** — `SuccessResponse` instead of `APIResponse<String?>` (backend returns no data field)
+- **Delete** — moved from broken swipe-to-delete (doesn't work in ScrollView) to delete button inside edit form with confirmation dialog
+
+### Lab Upload Fixes
+- **Empty state** — now triggers in-app DocumentPicker instead of redirecting to web dashboard
+- **Multi-file support** — DocumentPicker allows multiple selection
+- **Security-scoped URL fix** — reads file data in picker callback before URLs expire, stores as `PickedFile`, processes after sheet dismisses via `onChange`
+- **Image support** — accepts PNG/JPEG screenshots in addition to PDF (backend updated to use Claude Vision for images)
+- **Decode fix** — `LabResult.id` custom decoder generates UUID when id is missing (parse endpoint returns results without id)
+- **Loading state** — shows spinner + "Parsing lab results with AI..." when uploading from empty state
+- **Error visibility** — upload errors now shown on empty state view
+
+### Profile Updates
+- **Weight editable** — tap weight in profile header to update via alert, saves to daily_metrics
+- **Removed Web Dashboard link** from profile settings
+- **SuccessResponse model** added to AppModels for endpoints returning `{ success: true }` with no data
+
+### Background Resume Fix
+- ContentView refreshes auth token before syncing when returning from background
+- TodayView auto-retries loadData when returning to foreground if in error state
+
+### SpO2 Display Fix
+- HealthKit returns SpO2 as 0.0-1.0 fraction; now multiplied by 100 for display (97% not 0.97%)
+
+### Data Entry
+- Added 48 lab results for Lou Cesario Sr. (loucesario5@gmail.com): Lipid Panel, CMP, CBC w/ Diff, PSA, TSH, HbA1c, Cardiac Calcium Score — all drawn 7/16/2025
+
+### Files Created
+- `Vital/Services/ChatHistoryManager.swift`
+- `Vital/Views/More/ChatHistoryView.swift`
+- `Vital/Views/More/SupplementScanView.swift`
+- `src/app/api/supplements/analyze/route.ts` (web dashboard)
+
+### Files Modified (iOS)
+- `Vital/Models/AppModels.swift` — SuccessResponse, ChatConversation, ChatMessage Codable, LabResult custom decoder
+- `Vital/Views/Today/TodayView.swift` — recovery score redistribution, scenePhase retry, AI Insights rename
+- `Vital/Views/Dashboard/DashboardView.swift` — recovery score redistribution
+- `Vital/Views/More/ChatView.swift` — rewrite with conversation persistence
+- `Vital/Views/More/LabsView.swift` — upload fixes, multi-file, PickedFile, empty state loading/errors
+- `Vital/Views/More/SupplementFormView.swift` — delete button, onDelete callback, SuccessResponse
+- `Vital/Views/More/SupplementsView.swift` — scan button, delete via form, SuccessResponse
+- `Vital/Views/More/MoreView.swift` — ChatHistoryView
+- `Vital/Views/Profile/ProfileView.swift` — weight edit, AI Insights, removed Web Dashboard link
+- `Vital/Views/ContentView.swift` — auth token refresh on background resume
+- `Vital/Views/Components/DocumentPicker.swift` — multi-file, callback returns [URL]
+- `Vital/Services/HealthKitService.swift` — SpO2 × 100
+- `Vital/VitalApp.swift` — ChatHistoryManager environment
+
+### Files Modified (Web Dashboard)
+- `src/app/api/labs/parse/route.ts` — accepts PNG/JPEG via Claude Vision
+- `src/app/api/supplements/route.ts` — better error messages
+- `src/app/api/supplements/analyze/route.ts` — new endpoint
+
+### Backend Deployments
+- Lab parse image support: force-deployed via `vercel --prod --force`
+- Supplement analyze endpoint: auto-deployed via git push
+- Supplement error fix: auto-deployed via git push
+
+### TestFlight Builds
+- Builds 2-10 uploaded during session (1.0 build 10 is latest)
+
+### Decisions
+- Recovery score uses proportional redistribution rather than fixed fallback weights
+- Chat history stored locally (not backend) — simple, no new API needed
+- Supplement scan maps AI values to strict DB check constraints
+- SpO2 converted at sync time (stored as percentage, not fraction)
+- Removed Web Dashboard link — everything should be in-app
+
+### Known Issues
+- Supplement form still uses types/timings that may differ from DB constraints (form was built before constraints were known)
+- VO2 Max showing "—" (may not be available from all Apple Watch models)
+
+### Status
+- TestFlight: **Build 10 uploaded, processing**
+- Chat history: **Complete**
+- Supplement scan: **Complete and working**
+- Lab upload: **Complete and working (PDF + images)**
+- Recovery score: **Fixed**
+- SpO2: **Fixed**
+- Dad's labs: **48 results loaded**
+
+### What's Next
+1. **Profile photo upload** — user requested
+2. **App Store screenshots**
+3. **App Store description**
+4. **Test onboarding with new account**
+5. **Submit to App Store**
+
 ## 2026-04-02 — Session 11
 
 ### TestFlight & App Store Connect Setup
