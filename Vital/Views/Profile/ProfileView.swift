@@ -14,6 +14,9 @@ struct ProfileView: View {
     @State private var showSignOutConfirm = false
     @State private var showWeightEdit = false
     @State private var weightInput: String = ""
+    @State private var avatarImage: UIImage?
+    @State private var isUploadingPhoto = false
+    @State private var showPhotoPicker = false
 
     // Trends
     private var last7Days: [DailyMetric] {
@@ -88,20 +91,62 @@ struct ProfileView: View {
     private var profileHeader: some View {
         VStack(spacing: 12) {
             // Avatar
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [Brand.accent, Brand.secondary],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 64, height: 64)
+            Button {
+                showPhotoPicker = true
+            } label: {
+                ZStack(alignment: .bottomTrailing) {
+                    if let avatarImage {
+                        Image(uiImage: avatarImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 72, height: 72)
+                            .clipShape(Circle())
+                    } else {
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Brand.accent, Brand.secondary],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 72, height: 72)
 
-                Text(initials)
-                    .font(.title2.weight(.bold))
-                    .foregroundColor(Brand.textPrimary)
+                            Text(initials)
+                                .font(.title2.weight(.bold))
+                                .foregroundColor(Brand.textPrimary)
+                        }
+                    }
+
+                    if isUploadingPhoto {
+                        Circle()
+                            .fill(Color.black.opacity(0.5))
+                            .frame(width: 72, height: 72)
+                        ProgressView()
+                            .tint(.white)
+                    }
+
+                    // Camera badge
+                    ZStack {
+                        Circle()
+                            .fill(Brand.accent)
+                            .frame(width: 24, height: 24)
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white)
+                    }
+                    .offset(x: 2, y: 2)
+                }
+            }
+            .disabled(isUploadingPhoto)
+            .sheet(isPresented: $showPhotoPicker) {
+                ImagePicker(sourceType: .photoLibrary) { image in
+                    print("[Profile] Image picked: \(image.size)")
+                    avatarImage = image
+                    HapticManager.medium()
+                    Task { await uploadAvatar(image) }
+                }
             }
 
             Text(profile?.name ?? "—")
@@ -603,6 +648,50 @@ struct ProfileView: View {
         }
     }
 
+    // MARK: - Avatar
+
+    private func uploadAvatar(_ image: UIImage) async {
+        // Resize to max 256px and compress aggressively for fast upload
+        let maxDimension: CGFloat = 256
+        let scale = min(maxDimension / image.size.width, maxDimension / image.size.height, 1.0)
+        let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: newSize)) }
+
+        guard let jpegData = resized.jpegData(compressionQuality: 0.6) else { return }
+        let base64 = jpegData.base64EncodedString()
+        print("[Profile] Uploading avatar: \(jpegData.count) bytes, base64: \(base64.count) chars")
+
+        isUploadingPhoto = true
+        defer { isUploadingPhoto = false }
+
+        do {
+            let body: [String: Any] = ["image": base64]
+            let jsonData = try JSONSerialization.data(withJSONObject: body)
+            let _: SuccessResponse = try await apiService.postRaw("/profile/photo", jsonData: jsonData)
+            HapticManager.success()
+        } catch {
+            print("[Profile] Failed to upload avatar: \(error)")
+            // Revert preview on failure
+            if let url = profile?.avatarUrl, let imageUrl = URL(string: url) {
+                await loadAvatarFromURL(imageUrl)
+            } else {
+                avatarImage = nil
+            }
+        }
+    }
+
+    private func loadAvatarFromURL(_ url: URL) async {
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            if let image = UIImage(data: data) {
+                avatarImage = image
+            }
+        } catch {
+            print("[Profile] Failed to load avatar: \(error)")
+        }
+    }
+
     // MARK: - Data
 
     private func loadData() async {
@@ -620,6 +709,11 @@ struct ProfileView: View {
             labs = l.data ?? []
             supplements = s.data ?? []
             isLoading = false
+
+            // Load avatar if URL exists
+            if let urlStr = p.data?.avatarUrl, let url = URL(string: urlStr), avatarImage == nil {
+                await loadAvatarFromURL(url)
+            }
         } catch {
             isLoading = false
         }

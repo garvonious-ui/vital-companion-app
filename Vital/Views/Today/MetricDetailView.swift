@@ -30,7 +30,7 @@ extension MetricConfig {
         keyPath: \.sleepHours,
         relatedMetrics: [
             .init(label: "Respiratory Rate", unit: "brpm", keyPath: \.respiratoryRate),
-            .init(label: "SpO2", unit: "%", keyPath: \.spo2),
+            .init(label: "SpO2", unit: "%", keyPath: \.spo2Normalized),
             .init(label: "Resting HR", unit: "bpm", keyPath: \.restingHeartRate),
         ],
         chartColor: Brand.secondary
@@ -45,7 +45,7 @@ extension MetricConfig {
         relatedMetrics: [
             .init(label: "HRV", unit: "ms", keyPath: \.heartRateVariability),
             .init(label: "VO2 Max", unit: "mL/kg/min", keyPath: \.vo2Max),
-            .init(label: "SpO2", unit: "%", keyPath: \.spo2),
+            .init(label: "SpO2", unit: "%", keyPath: \.spo2Normalized),
         ],
         chartColor: Brand.critical
     )
@@ -73,7 +73,7 @@ extension MetricConfig {
         relatedMetrics: [
             .init(label: "Resting HR", unit: "bpm", keyPath: \.restingHeartRate),
             .init(label: "Sleep", unit: "hrs", keyPath: \.sleepHours),
-            .init(label: "SpO2", unit: "%", keyPath: \.spo2),
+            .init(label: "SpO2", unit: "%", keyPath: \.spo2Normalized),
         ],
         chartColor: Brand.accent
     )
@@ -100,6 +100,7 @@ struct MetricDetailView: View {
     let metrics: [DailyMetric]
 
     @State private var showLast30 = false
+    @State private var selectedDate: String?
 
     private var displayMetrics: [DailyMetric] {
         let sorted = metrics.sorted { $0.date < $1.date }
@@ -187,16 +188,37 @@ struct MetricDetailView: View {
         VStack(spacing: 12) {
             // 7/30 day toggle
             HStack(spacing: 0) {
-                toggleButton("7 days", selected: !showLast30) { showLast30 = false }
-                toggleButton("30 days", selected: showLast30) { showLast30 = true }
+                toggleButton("7 days", selected: !showLast30) { selectedDate = nil; showLast30 = false }
+                toggleButton("30 days", selected: showLast30) { selectedDate = nil; showLast30 = true }
             }
             .background(Brand.elevated)
             .cornerRadius(8)
 
-            // Chart
+            // Selected value display (fixed position above chart)
             let dataPoints = displayMetrics.compactMap { metric -> (String, Double)? in
                 guard let value = metric[keyPath: config.keyPath] else { return nil }
                 return (metric.date, value)
+            }
+
+            if let selectedDate,
+               let selectedValue = dataPoints.first(where: { $0.0 == selectedDate })?.1 {
+                HStack(spacing: 6) {
+                    Text(formatValue(selectedValue))
+                        .font(.system(.title3, weight: .bold).monospacedDigit())
+                        .foregroundColor(.white)
+                    if !config.unit.isEmpty {
+                        Text(config.unit)
+                            .font(.caption)
+                            .foregroundColor(Brand.textMuted)
+                    }
+                    Text("·")
+                        .foregroundColor(Brand.textMuted)
+                    Text(shortDate(selectedDate))
+                        .font(.subheadline)
+                        .foregroundColor(Brand.textSecondary)
+                }
+                .frame(maxWidth: .infinity)
+                .transition(.opacity)
             }
 
             if dataPoints.isEmpty {
@@ -230,10 +252,17 @@ struct MetricDetailView: View {
                             x: .value("Date", date),
                             y: .value(config.title, value)
                         )
-                        .foregroundStyle(config.chartColor)
-                        .symbolSize(dataPoints.count <= 7 ? 30 : 0)
+                        .foregroundStyle(selectedDate == date ? .white : config.chartColor)
+                        .symbolSize(selectedDate == date ? 50 : (dataPoints.count <= 7 ? 30 : 0))
+                    }
+
+                    if let selectedDate {
+                        RuleMark(x: .value("Date", selectedDate))
+                            .foregroundStyle(Color.white.opacity(0.3))
+                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                     }
                 }
+                .chartXSelection(value: $selectedDate)
                 .chartXAxis {
                     AxisMarks(values: .automatic(desiredCount: showLast30 ? 4 : 7)) { value in
                         AxisValueLabel {

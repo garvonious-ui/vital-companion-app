@@ -42,6 +42,11 @@ struct DailyMetric: Codable, Identifiable, Sendable {
     // Convenience aliases used by DashboardView
     var heartRateVariability: Double? { hrvMs }
     var restingHeartRate: Double? { restingHR }
+    // SpO2: old data may be stored as 0.0-1.0 fraction, normalize to percentage
+    var spo2Normalized: Double? {
+        guard let v = spo2 else { return nil }
+        return v <= 1.0 ? v * 100 : v
+    }
 }
 
 // MARK: - Targets
@@ -237,7 +242,7 @@ struct Supplement: Codable, Identifiable, Sendable {
 
 // MARK: - User Profile
 // API returns: id, displayName, dateOfBirth, sex, heightInches, weightLbs,
-//              location, goals, conditions, medications
+//              location, goals, conditions, medications, avatarUrl
 
 struct UserProfile: Codable, Sendable {
     let id: String
@@ -250,6 +255,7 @@ struct UserProfile: Codable, Sendable {
     let goals: [String]?
     let conditions: [String]?
     let medications: [String]?
+    let avatarUrl: String?
 
     // Convenience aliases
     var name: String? { displayName }

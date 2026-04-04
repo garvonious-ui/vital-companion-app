@@ -9,8 +9,10 @@
 /* Begin PBXBuildFile section */
 		0066661C04BC58EDD9FDD80C /* SyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 419049B12A08DD535DF23CBC /* SyncService.swift */; };
 		08C79908544161C16AFECCEA /* WorkoutDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7586B39AA3724352A53798C3 /* WorkoutDetailView.swift */; };
+		113957073D32157F511B0B97 /* ChatHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58BCF7A7CE62FA7F61B02947 /* ChatHistoryView.swift */; };
 		21650B63683E26C56D952CDF /* VitalApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75F944990025E5997A5F0847 /* VitalApp.swift */; };
 		22D664D7F5FD652A31DB0F65 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1CAE199160B3A4F83672596 /* APIService.swift */; };
+		2363FBCC1AEA2709E32E1C49 /* ChatHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FCAD02401C1EF8CC5344F4 /* ChatHistoryManager.swift */; };
 		29E05D9C2A5372819CF26B6F /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C464C536715D7CD233F022 /* ChatView.swift */; };
 		2A7616587AC02AF5E795E939 /* MetricDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D46C9D2EEE67FD860EA9269C /* MetricDetailView.swift */; };
 		2C8B787BBDB5CA3499CC8F45 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A505619541FE752606DD517 /* AuthService.swift */; };
@@ -22,6 +24,7 @@
 		4E3189299980475CEDF47604 /* MealFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 234C8B4F374F1A11E2A462BE /* MealFormView.swift */; };
 		61B1EE2C30CD7785928F53FA /* HealthData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CA0976C5B54CDAB62C9964 /* HealthData.swift */; };
 		63D97D74849E03C0F076194D /* SparklineChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D4225B85291BA2AA157CA81 /* SparklineChart.swift */; };
+		63EDA6B453A78FA2D8C1162F /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3398576D292987F2B5FE4251 /* ImagePicker.swift */; };
 		664BF915E1E36D770A850E28 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D62018416CAAA49C7E9D937 /* SettingsView.swift */; };
 		675BA7C7182E3C2B4AE46A78 /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A64A47B9FD55661422FED52 /* ActivityView.swift */; };
 		685685054E1D9C017B5E8E35 /* AppModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41DD527E05343DD9C7E0D7B9 /* AppModels.swift */; };
@@ -53,6 +56,7 @@
 		F4B947C98349231AE4312579 /* QuickLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11FD45DA6073A9AF4653948C /* QuickLogView.swift */; };
 		F8EF78F636AB968A0C5C2141 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B0D139DCAABA4FF1454DD9E /* LoginView.swift */; };
 		FE77C8E2E3F2A0F4338F35A2 /* MealAnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7D604E9B7E3661E662A5E7F /* MealAnalysisService.swift */; };
+		FF3BFF2F40540103C12152AA /* SupplementScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AFC49CCDA59865BC4C7D70B /* SupplementScanView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -65,8 +69,11 @@
 		21FD12DE3911921C22F394BA /* WorkoutSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSessionView.swift; sourceTree = "<group>"; };
 		234C8B4F374F1A11E2A462BE /* MealFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealFormView.swift; sourceTree = "<group>"; };
 		269D5C7E269BC001761E3170 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		26FCAD02401C1EF8CC5344F4 /* ChatHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatHistoryManager.swift; sourceTree = "<group>"; };
 		2D62018416CAAA49C7E9D937 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		3398576D292987F2B5FE4251 /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
 		34DD3ADBC4EDBBD471333412 /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
+		3AFC49CCDA59865BC4C7D70B /* SupplementScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplementScanView.swift; sourceTree = "<group>"; };
 		419049B12A08DD535DF23CBC /* SyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncService.swift; sourceTree = "<group>"; };
 		41DD527E05343DD9C7E0D7B9 /* AppModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModels.swift; sourceTree = "<group>"; };
 		4A83C6F4F89F3B1447EE6310 /* LabsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabsView.swift; sourceTree = "<group>"; };
@@ -75,6 +82,7 @@
 		51CA0976C5B54CDAB62C9964 /* HealthData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthData.swift; sourceTree = "<group>"; };
 		524A95CB42E653597360F8F1 /* RecoveryRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryRing.swift; sourceTree = "<group>"; };
 		533791F1F8F3F49849EED2E9 /* Vital.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Vital.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		58BCF7A7CE62FA7F61B02947 /* ChatHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatHistoryView.swift; sourceTree = "<group>"; };
 		5FE808B66952FCB7F89CF796 /* SupplementsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplementsView.swift; sourceTree = "<group>"; };
 		695F5E696F12D181D6A4AFFD /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
 		6E0101990B2443858036D833 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
@@ -124,6 +132,7 @@
 				A453F8F5AFBEE93612CD2DDA /* DocumentPicker.swift */,
 				EACF3EB67A073B4D6917E660 /* EmptyStateView.swift */,
 				34DD3ADBC4EDBBD471333412 /* HapticManager.swift */,
+				3398576D292987F2B5FE4251 /* ImagePicker.swift */,
 				789FB3B558E209BB25525EB1 /* MacroBar.swift */,
 				524A95CB42E653597360F8F1 /* RecoveryRing.swift */,
 				7ECFC4ADFF01A5E7F7A5967F /* SkeletonView.swift */,
@@ -160,10 +169,12 @@
 		5C95BDB34DFDB5D010EE612B /* More */ = {
 			isa = PBXGroup;
 			children = (
+				58BCF7A7CE62FA7F61B02947 /* ChatHistoryView.swift */,
 				A9C464C536715D7CD233F022 /* ChatView.swift */,
 				4A83C6F4F89F3B1447EE6310 /* LabsView.swift */,
 				695F5E696F12D181D6A4AFFD /* MoreView.swift */,
 				007156F6AEE52F5471FAC5B5 /* SupplementFormView.swift */,
+				3AFC49CCDA59865BC4C7D70B /* SupplementScanView.swift */,
 				5FE808B66952FCB7F89CF796 /* SupplementsView.swift */,
 			);
 			path = More;
@@ -198,6 +209,7 @@
 			children = (
 				F1CAE199160B3A4F83672596 /* APIService.swift */,
 				7A505619541FE752606DD517 /* AuthService.swift */,
+				26FCAD02401C1EF8CC5344F4 /* ChatHistoryManager.swift */,
 				CBF73ED4E98DCD72ABD704F1 /* HealthKitService.swift */,
 				F7D604E9B7E3661E662A5E7F /* MealAnalysisService.swift */,
 				D87B44CB5432E31DD4F5A785 /* NetworkMonitor.swift */,
@@ -357,6 +369,8 @@
 				2C8B787BBDB5CA3499CC8F45 /* AuthService.swift in Sources */,
 				87CE45C7EC90057B7404D6C5 /* BrandColors.swift in Sources */,
 				3850A7C17F91162718E074A5 /* CameraPicker.swift in Sources */,
+				2363FBCC1AEA2709E32E1C49 /* ChatHistoryManager.swift in Sources */,
+				113957073D32157F511B0B97 /* ChatHistoryView.swift in Sources */,
 				29E05D9C2A5372819CF26B6F /* ChatView.swift in Sources */,
 				C691307B8AC193BFA5D584C6 /* Config.swift in Sources */,
 				306C873F89DB17082AAEF7DB /* ContentView.swift in Sources */,
@@ -366,6 +380,7 @@
 				A493F1EAEB4E898E76428607 /* HapticManager.swift in Sources */,
 				61B1EE2C30CD7785928F53FA /* HealthData.swift in Sources */,
 				72BE40C3C30A9684A7C89300 /* HealthKitService.swift in Sources */,
+				63EDA6B453A78FA2D8C1162F /* ImagePicker.swift in Sources */,
 				AF26D00E7712120425E3425D /* LabsView.swift in Sources */,
 				F8EF78F636AB968A0C5C2141 /* LoginView.swift in Sources */,
 				E02FFF0EC6709E0683FC0AE6 /* MacroBar.swift in Sources */,
@@ -386,6 +401,7 @@
 				992C271EAF05E18D631CC48C /* SleepDetailView.swift in Sources */,
 				63D97D74849E03C0F076194D /* SparklineChart.swift in Sources */,
 				929ACBD19E455D8624BC7A68 /* SupplementFormView.swift in Sources */,
+				FF3BFF2F40540103C12152AA /* SupplementScanView.swift in Sources */,
 				A91E6512E1FBC897AF0E8636 /* SupplementsView.swift in Sources */,
 				0066661C04BC58EDD9FDD80C /* SyncService.swift in Sources */,
 				EB251EBF97EFDAADDA19C673 /* SyncStatusView.swift in Sources */,
@@ -526,7 +542,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Vital/Vital.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = A3W539C4C3;
 				INFOPLIST_FILE = Vital/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -547,7 +563,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Vital/Vital.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = A3W539C4C3;
 				INFOPLIST_FILE = Vital/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
