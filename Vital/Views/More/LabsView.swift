@@ -11,7 +11,7 @@ struct LabsView: View {
     @State private var showDocPicker = false
     @State private var isUploading = false
     @State private var uploadMessage: String?
-    @State private var pickedURLs: [URL] = []
+    @State private var pickedFiles: [PickedFile] = []
 
     private let filterOptions = ["All", "Flagged", "Lipids", "Metabolic", "CBC", "Kidney", "Liver", "Hormones", "Thyroid", "Vitamins & Minerals", "Inflammation", "Infectious"]
 
@@ -124,17 +124,37 @@ struct LabsView: View {
         .navigationTitle("Lab Results")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showDocPicker, onDismiss: {
-            guard !pickedURLs.isEmpty else { return }
-            let urls = pickedURLs
-            pickedURLs = []
+            guard !pickedFiles.isEmpty else { return }
+            let files = pickedFiles
+            pickedFiles = []
             Task {
-                for url in urls {
-                    await uploadFile(url: url)
+                for file in files {
+                    await uploadFileData(file)
                 }
             }
         }) {
             DocumentPicker { urls in
-                pickedURLs = urls
+                // Read file data NOW while security-scoped URLs are still valid
+                var files: [PickedFile] = []
+                for url in urls {
+                    guard url.startAccessingSecurityScopedResource() else { continue }
+                    defer { url.stopAccessingSecurityScopedResource() }
+                    if let data = try? Data(contentsOf: url) {
+                        let ext = url.pathExtension.lowercased()
+                        let contentType: String = switch ext {
+                        case "png": "image/png"
+                        case "jpg", "jpeg": "image/jpeg"
+                        default: "application/pdf"
+                        }
+                        let filename: String = switch ext {
+                        case "png": "labs.png"
+                        case "jpg", "jpeg": "labs.jpg"
+                        default: "labs.pdf"
+                        }
+                        files.append(PickedFile(data: data, contentType: contentType, filename: filename))
+                    }
+                }
+                pickedFiles = files
             }
         }
         .task {
@@ -213,35 +233,18 @@ struct LabsView: View {
 
     // MARK: - Upload Logic
 
-    private func uploadFile(url: URL) async {
+    private func uploadFileData(_ file: PickedFile) async {
         isUploading = true
         uploadMessage = nil
 
-        guard url.startAccessingSecurityScopedResource() else {
-            uploadMessage = "Error: Could not access file"
-            isUploading = false
-            return
-        }
-        defer { url.stopAccessingSecurityScopedResource() }
-
         do {
-            let fileData = try Data(contentsOf: url)
-
-            // Detect file type
-            let ext = url.pathExtension.lowercased()
-            let (contentType, filename): (String, String) = switch ext {
-            case "png": ("image/png", "labs.png")
-            case "jpg", "jpeg": ("image/jpeg", "labs.jpg")
-            default: ("application/pdf", "labs.pdf")
-            }
-
             // Build multipart form data
             let boundary = UUID().uuidString
             var body = Data()
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
-            body.append("Content-Type: \(contentType)\r\n\r\n".data(using: .utf8)!)
-            body.append(fileData)
+            body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(file.filename)\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: \(file.contentType)\r\n\r\n".data(using: .utf8)!)
+            body.append(file.data)
             body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
 
             guard let token = await apiService.authService.accessToken() else {
@@ -521,6 +524,14 @@ struct LabsView: View {
         display.dateFormat = "MMM d, yyyy"
         return display.string(from: date)
     }
+}
+
+// MARK: - Picked File
+
+struct PickedFile: Equatable {
+    let data: Data
+    let contentType: String
+    let filename: String
 }
 
 // MARK: - Lab Range Bar (SwiftUI port of web RangeBar)
