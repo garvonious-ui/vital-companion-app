@@ -241,7 +241,7 @@ struct SupplementsView: View {
 
     private func deleteSupplement(_ supp: Supplement) async {
         do {
-            let _: APIResponse<String?> = try await apiService.delete("/supplements", queryItems: [URLQueryItem(name: "id", value: supp.id)])
+            let _: SuccessResponse = try await apiService.delete("/supplements", queryItems: [URLQueryItem(name: "id", value: supp.id)])
             supplements.removeAll { $0.id == supp.id }
             HapticManager.success()
         } catch {
