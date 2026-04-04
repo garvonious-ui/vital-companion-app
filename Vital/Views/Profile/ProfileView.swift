@@ -405,7 +405,7 @@ struct ProfileView: View {
                             Text("No health profile data")
                                 .font(.subheadline)
                                 .foregroundColor(Brand.textMuted)
-                            Text("Add conditions, medications, and goals on the web dashboard")
+                            Text("Tap Edit to add conditions, medications, and goals")
                                 .font(.caption)
                                 .foregroundColor(Brand.textMuted)
                                 .multilineTextAlignment(.center)
@@ -419,6 +419,18 @@ struct ProfileView: View {
         }
         .navigationTitle("Health Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                NavigationLink {
+                    HealthProfileEditView(profile: profile) {
+                        await loadData()
+                    }
+                } label: {
+                    Text("Edit")
+                        .foregroundColor(Brand.accent)
+                }
+            }
+        }
     }
 
     private func profileSection(title: String, items: [String], color: Color) -> some View {

@@ -10,6 +10,7 @@
 		0066661C04BC58EDD9FDD80C /* SyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 419049B12A08DD535DF23CBC /* SyncService.swift */; };
 		08C79908544161C16AFECCEA /* WorkoutDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7586B39AA3724352A53798C3 /* WorkoutDetailView.swift */; };
 		113957073D32157F511B0B97 /* ChatHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58BCF7A7CE62FA7F61B02947 /* ChatHistoryView.swift */; };
+		1A1C5F565A07DC66127663E1 /* HealthProfileEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81DA91D12D1CEA1BA42A24C8 /* HealthProfileEditView.swift */; };
 		21650B63683E26C56D952CDF /* VitalApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75F944990025E5997A5F0847 /* VitalApp.swift */; };
 		22D664D7F5FD652A31DB0F65 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1CAE199160B3A4F83672596 /* APIService.swift */; };
 		2363FBCC1AEA2709E32E1C49 /* ChatHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FCAD02401C1EF8CC5344F4 /* ChatHistoryManager.swift */; };
@@ -92,6 +93,7 @@
 		789FB3B558E209BB25525EB1 /* MacroBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacroBar.swift; sourceTree = "<group>"; };
 		7A505619541FE752606DD517 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		7ECFC4ADFF01A5E7F7A5967F /* SkeletonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkeletonView.swift; sourceTree = "<group>"; };
+		81DA91D12D1CEA1BA42A24C8 /* HealthProfileEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthProfileEditView.swift; sourceTree = "<group>"; };
 		86AC6E545186B05588923B37 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		9A64A47B9FD55661422FED52 /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
 		9B0D139DCAABA4FF1454DD9E /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
@@ -144,6 +146,7 @@
 		37A601983F119E8FF79F0143 /* Profile */ = {
 			isa = PBXGroup;
 			children = (
+				81DA91D12D1CEA1BA42A24C8 /* HealthProfileEditView.swift */,
 				06149EE4656A31E0CDC26112 /* ProfileView.swift */,
 			);
 			path = Profile;
@@ -380,6 +383,7 @@
 				A493F1EAEB4E898E76428607 /* HapticManager.swift in Sources */,
 				61B1EE2C30CD7785928F53FA /* HealthData.swift in Sources */,
 				72BE40C3C30A9684A7C89300 /* HealthKitService.swift in Sources */,
+				1A1C5F565A07DC66127663E1 /* HealthProfileEditView.swift in Sources */,
 				63EDA6B453A78FA2D8C1162F /* ImagePicker.swift in Sources */,
 				AF26D00E7712120425E3425D /* LabsView.swift in Sources */,
 				F8EF78F636AB968A0C5C2141 /* LoginView.swift in Sources */,

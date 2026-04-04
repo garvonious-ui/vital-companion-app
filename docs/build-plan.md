@@ -139,6 +139,13 @@
 - [x] Supabase migration — avatar_url column on profiles, avatars storage bucket
 - [x] POST /api/profile/photo — base64 JPEG upload to Supabase Storage
 
+### Session 16 Features
+- [x] Health Profile editable — HealthProfileEditView with preset pills + custom text fields for conditions/meds/goals
+- [x] Oura data import — Teresa's 22 days of Oura Ring data loaded (sleep, activity, HR, HRV, SpO2)
+- [x] Oura cron sync — GET /api/cron/sync-devices pulls last 3 days every 2 hours for all connected Oura users
+- [x] vercel.json — cron schedule configured
+- [x] Teresa's Oura token stored in device_connections table
+
 ### Bug Fixes (Session 10)
 - [x] Double load on app launch — debounce TodayView onChange reload (3s threshold), skip scenePhase sync on first launch
 - [x] Privacy policy requires login — added /privacy to public routes in web middleware
@@ -197,13 +204,34 @@
 - [x] Oura Ring — OAuth flow on web dashboard (code-complete, credentials deployed)
 - [ ] Oura Ring — test end-to-end with real ring
 - [x] Oura Ring — "Connect Devices" link in iOS app MoreView/Settings
+- [ ] Oura Ring — get dev account approved (updated description, URLs submitted)
 - [ ] Whoop — OAuth + sync (needed for runner beta tester)
 - [ ] Garmin — OAuth + sync
+
+### Recurring Device Sync
+- [x] Vercel cron job — pulls Oura data for all connected users every 2 hours
+- [x] Store device tokens in device_connections table (personal access token now, OAuth token once approved)
+- [x] Sync script: pull sleep, activity, SpO2 → UPDATE daily_metrics (don't overwrite HealthKit fields)
+- [ ] Oura webhooks (V2) — near real-time push when data is processed (replaces cron for Oura)
+
+### Device Onboarding (Future)
+- [ ] Onboarding step: "How do you track?" — Apple Watch / Oura / Whoop / Garmin / None
+- [ ] Apple Watch path → HealthKit permissions (current flow)
+- [ ] Oura/Whoop/Garmin path → OAuth connect flow, HealthKit optional (iPhone still gives steps/distance)
+- [ ] No device path → skip device setup, manual logging only
+- [ ] Recovery score weighting adjusts based on data source (Oura HRV vs Apple Watch HRV ranges differ)
+- [ ] Today tab adapts to available data sources (don't show empty cards for metrics the user's device doesn't track)
 
 ### Workout Plans (Future)
 - [ ] "Create plan on web dashboard" Safari link when no active plan
 - [ ] Read-only plan detail view (tap plan card → full weekly schedule)
 - [ ] Native AI plan generator (port multi-step chat questionnaire from web)
+
+### AI Actions (Future)
+- [ ] AI can suggest data updates mid-conversation (add supplement, log water, log meal, update goals)
+- [ ] Action tags in AI response → parsed into inline confirmation cards in chat
+- [ ] User confirms → iOS calls existing API endpoints
+- [ ] Editable health profile from app (conditions, meds, goals) — preset pills + custom text
 
 ### Run-Specific Features (Future — for runner beta tester)
 - [ ] Distance, pace, splits data from HealthKit

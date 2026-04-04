@@ -1,5 +1,75 @@
 # Changelog — Vital Companion App
 
+## 2026-04-04 — Session 16
+
+### Editable Health Profile
+- **HealthProfileEditView.swift** (new) — edit conditions, medications, and goals from the app
+- Each section has preset pills (tap to toggle) + custom text field with add button
+- Presets: 12 common conditions, 12 common medications, 10 goals
+- Custom items show with X to remove, presets toggle filled/unfilled
+- Save button PATCHes /api/profile with all three arrays
+- Health Profile detail view now has "Edit" toolbar button
+- Empty state updated: "Tap Edit to add..." instead of "Add on web dashboard"
+
+### Oura Ring Data Import (Teresa)
+- Pulled 22 days of Oura data via personal access token for Teresa (cesario.teresa@gmail.com, user 8d1658b0)
+- Sleep sessions (14 nights): sleep hours, resting HR (lowest), HRV (average)
+- Activity (22 days): steps, active calories, distance, exercise minutes
+- SpO2 (14 days): blood oxygen percentage
+- Used UPDATE (not upsert) to avoid overwriting HealthKit fields (iPhone steps/calories)
+- Stored Oura token in device_connections table
+
+### Oura Cron Sync
+- **GET /api/cron/sync-devices** (new) — automated Oura data sync for all connected users
+- Pulls last 3 days of sleep, activity, SpO2 from Oura API
+- Uses UPDATE for existing rows, INSERT for new rows (preserves HealthKit data)
+- Marks tokens as expired on 401/403
+- Updates last_sync_at in device_connections after each sync
+- Vercel CRON_SECRET for auth
+- **vercel.json** (new) — cron runs every 2 hours
+- Added CRON_SECRET env var to Vercel
+
+### Build Plan Updates
+- Added "Recurring Device Sync" section (cron, token storage, webhooks)
+- Added "Device Onboarding" section (multi-device onboarding flow)
+- Added "AI Actions" section (AI suggesting data updates mid-conversation)
+
+### Files Created
+- `Vital/Views/Profile/HealthProfileEditView.swift`
+- `src/app/api/cron/sync-devices/route.ts` (web dashboard)
+- `vercel.json` (web dashboard)
+
+### Files Modified (iOS)
+- `Vital/Views/Profile/ProfileView.swift` — Edit button on health profile, updated empty state text
+- `docs/build-plan.md` — session 16 features, recurring sync, device onboarding, AI actions sections
+
+### Files Modified (Web Dashboard)
+- `vercel.json` — cron schedule
+
+### Bugs Found
+- **HealthKit sync overwrites Oura data** — Supabase upsert replaces entire row. For Oura users without Apple Watch, HealthKit sync (iPhone steps) was nulling out sleep/HR/HRV fields. Fixed by using UPDATE (not upsert) in cron sync to only set Oura-specific fields.
+- **Oura API has no data for current day** — sleep/activity data processes with delay. Data for today appears after waking (sleep) or later in the day (activity). Not a bug, just Oura's processing lag.
+
+### Decisions
+- Personal access token used for first Oura connection (bypasses OAuth dev app approval requirement)
+- Cron runs every 2 hours (Vercel hobby plan supports down to hourly)
+- Cron pulls last 3 days each run to catch up on any gaps
+- UPDATE (not upsert) pattern for device sync — preserves data from other sources
+- Health profile presets chosen for common conditions/meds in the target demographic
+
+### Status
+- Health profile edit: **Complete, pending device test**
+- Oura data import: **Complete — 22 days loaded for Teresa**
+- Oura cron sync: **Deployed, running every 2 hours**
+- Build plan: **Updated with 3 new future sections**
+
+### What's Next
+1. **App Store screenshots + description**
+2. **Test onboarding** with a new account
+3. **Submit to App Store**
+4. **Get Oura dev account approved** (URLs now valid)
+5. **Device onboarding flow** for non-Apple Watch users
+
 ## 2026-04-04 — Session 15
 
 ### Interactive Charts
