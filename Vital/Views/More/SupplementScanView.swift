@@ -365,12 +365,18 @@ struct SupplementScanView: View {
         let selected = results.filter(\.selected)
 
         for supp in selected {
+            let validTypes = ["Prescription", "Supplement", "OTC"]
+            let validTimings = ["Morning", "Afternoon", "Evening", "With Food", "Empty Stomach"]
+
+            let type = validTypes.first { $0.lowercased() == supp.type.lowercased() } ?? "Supplement"
+            let timing = validTimings.first { $0.lowercased() == supp.timing.lowercased() } ?? mapTiming(supp.timing)
+
             let body: [String: String] = [
                 "name": supp.name,
-                "type": supp.type,
+                "type": type,
                 "dosage": supp.dosage,
                 "frequency": supp.frequency,
-                "timing": supp.timing,
+                "timing": timing,
                 "status": "Active",
                 "reason": supp.reason ?? "",
             ]
@@ -380,18 +386,30 @@ struct SupplementScanView: View {
                 let _: SuccessResponse = try await apiService.postRaw("/supplements", jsonData: jsonData)
                 savedCount += 1
             } catch {
-                // Continue saving rest
+                errorMessage = "Error: \(error.localizedDescription)"
             }
         }
 
         if savedCount > 0 {
             HapticManager.success()
             dismiss()
-        } else {
+        } else if errorMessage == nil {
             errorMessage = "Failed to save supplements"
         }
 
         isSaving = false
+    }
+
+    // MARK: - Timing Mapper
+
+    private func mapTiming(_ raw: String) -> String {
+        let lower = raw.lowercased()
+        if lower.contains("morning") { return "Morning" }
+        if lower.contains("evening") || lower.contains("night") || lower.contains("bed") { return "Evening" }
+        if lower.contains("afternoon") { return "Afternoon" }
+        if lower.contains("meal") || lower.contains("food") { return "With Food" }
+        if lower.contains("empty") || lower.contains("fasting") { return "Empty Stomach" }
+        return "Morning" // safe default
     }
 
     // MARK: - Image Compression
