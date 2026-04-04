@@ -130,6 +130,15 @@
 - [x] Renamed "Ask Vital" → "AI Insights" everywhere
 - [x] Removed Web Dashboard link from profile settings
 
+### Session 15 Features
+- [x] Interactive charts — tap/drag MetricDetailView chart to see data point values (rule mark + fixed header)
+- [x] Profile photo upload — tap avatar to pick from photo library, uploads to Supabase Storage
+- [x] SpO2 normalization — old fractional data (<=1.0) auto-multiplied by 100 for display
+- [x] AI chat nudges — encourages adding labs, supplements, and meals when data is missing/sparse
+- [x] ImagePicker component — UIKit wrapper for photo library (PhotosPicker broken on iOS 26 SDK)
+- [x] Supabase migration — avatar_url column on profiles, avatars storage bucket
+- [x] POST /api/profile/photo — base64 JPEG upload to Supabase Storage
+
 ### Bug Fixes (Session 10)
 - [x] Double load on app launch — debounce TodayView onChange reload (3s threshold), skip scenePhase sync on first launch
 - [x] Privacy policy requires login — added /privacy to public routes in web middleware

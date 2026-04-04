@@ -1,5 +1,83 @@
 # Changelog — Vital Companion App
 
+## 2026-04-04 — Session 15
+
+### Interactive Charts
+- **MetricDetailView** — tap or drag on the chart to select a data point
+- Dashed vertical rule mark highlights the selected point
+- Selected point enlarges and turns white
+- Value + date displayed in a fixed header above the chart (not a floating tooltip — eliminates jitter)
+- Switching between 7/30 day toggle clears selection
+
+### Profile Photo Upload
+- **Tap avatar** on Profile tab → photo library picker → image displayed + uploaded
+- **ImagePicker.swift** (new) — UIViewControllerRepresentable wrapping UIImagePickerController with `allowsEditing: true` for cropping
+- Image resized to 256px max, JPEG compressed at 0.6 quality before upload
+- **POST /api/profile/photo** (new backend route) — accepts base64 JPEG, uploads to Supabase Storage `avatars` bucket, updates profile `avatar_url`
+- **Supabase migration** — added `avatar_url` TEXT column to profiles, created `avatars` storage bucket with public read access
+- Avatar loads from URL on app launch if previously set
+- Shows loading spinner during upload, reverts on failure
+- Camera badge icon on avatar indicates it's tappable
+
+### AI Chat Context Improvements
+- **Sparse nutrition nudge** — if user logged meals on <3 of last 7 days, AI skips nutritional analysis and encourages consistent logging with photo scanner
+- **No labs nudge** — if no lab results on file, AI mentions uploading bloodwork (PDF/photo) for deeper analysis when health topics come up
+- **No supplements nudge** — if no supplements on file, AI suggests adding stack (photo scan) for interaction checks and timing advice
+- Updated system prompt rules to support contextual nudges
+
+### SpO2 Normalization
+- Added `spo2Normalized` computed property on DailyMetric — if value <=1.0, multiplies by 100
+- All MetricDetailView related metrics now use `\.spo2Normalized` instead of `\.spo2`
+- Fixes display of old data stored as fractions (showed "1.0%" instead of "98%")
+
+### TestFlight
+- Build 11 (1.0.0) archived and uploaded to App Store Connect
+
+### Files Created
+- `Vital/Views/Components/ImagePicker.swift`
+- `src/app/api/profile/photo/route.ts` (web dashboard)
+- `supabase/migrations/20260404032926_add_avatar_url.sql` (web dashboard)
+
+### Files Modified (iOS)
+- `Vital/Views/Today/MetricDetailView.swift` — chart selection, spo2Normalized
+- `Vital/Views/Profile/ProfileView.swift` — avatar photo picker + upload
+- `Vital/Models/AppModels.swift` — avatarUrl field, spo2Normalized computed property
+- `project.yml` — build number 10 → 11
+
+### Files Modified (Web Dashboard)
+- `src/lib/ai-context.ts` — nutrition/labs/supplements nudges, system prompt updates
+- `src/lib/data.ts` — avatarUrl in fetchProfile/updateProfile
+- `src/lib/types.ts` — avatarUrl on UserProfile interface
+
+### Backend Deployments
+- AI context nudges: auto-deployed via git push
+- Profile photo route: force-deployed via `vercel --prod` (auto-deploy returned 404 initially)
+- maxDuration added to photo route for 30s timeout
+
+### Bugs Found
+- **PhotosPicker broken on iOS 26 SDK** — `onChange` and `.task(id:)` never fire when PhotosPickerItem is selected. Workaround: UIKit UIImagePickerController via ImagePicker component
+- **Profile photo route 404** — Vercel auto-deploy from git push didn't pick up new route directory. Required force deploy via `vercel --prod`
+
+### Decisions
+- Interactive chart uses fixed header display (Apple Health style) instead of floating annotation — eliminates jitter when dragging
+- Profile photo stored in Supabase Storage (public bucket) rather than base64 in DB — scalable, cacheable
+- AI nudges only for labs, nutrition, and supplements — workouts and water tracking nudges felt too naggy
+- Nutrition threshold set to 3 days (of last 7) — below that, data isn't useful for analysis
+- VO2 Max showing "—" is correct behavior — Apple Watch only records it after qualifying outdoor workouts
+
+### Status
+- Interactive charts: **Complete and tested**
+- Profile photo: **Complete and tested**
+- AI nudges: **Deployed to production**
+- SpO2 normalization: **Complete**
+- TestFlight: **Build 11 uploaded**
+
+### What's Next
+1. **App Store screenshots + description**
+2. **Test onboarding** with a new account
+3. **Submit to App Store**
+4. **Remaining unchecked**: background sync test, meal scan rate limiting UI, flights climbed, stand hours
+
 ## 2026-04-03 — Sessions 13-14
 
 ### Recovery Score Fix
