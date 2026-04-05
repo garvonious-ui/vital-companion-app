@@ -150,12 +150,14 @@ struct MainTabView: View {
             UITabBar.appearance().scrollEdgeAppearance = appearance
         }
         .task {
-            // Only sync HealthKit for Apple Watch / iPhone users
             let savedDevice = UserDefaults.standard.string(forKey: "selectedDeviceType")
                 .flatMap { DeviceType(rawValue: $0) } ?? .appleWatch
             if savedDevice.shouldSyncHealthKit {
                 healthKitService.enableBackgroundDelivery()
                 await syncService.sync()
+            }
+            if savedDevice == .oura {
+                await triggerOuraSync()
             }
             hasLaunched = true
         }
@@ -168,10 +170,24 @@ struct MainTabView: View {
                     if savedDevice.shouldSyncHealthKit {
                         await syncService.sync()
                     }
+                    if savedDevice == .oura {
+                        await triggerOuraSync()
+                    }
                 }
             }
         }
         } // close VStack
+    }
+}
+
+extension MainTabView {
+    func triggerOuraSync() async {
+        do {
+            let _: SuccessResponse = try await apiService.postRaw("/devices/oura/sync", jsonData: Data("{}".utf8))
+            print("[OuraSync] Synced successfully")
+        } catch {
+            print("[OuraSync] Failed: \(error)")
+        }
     }
 }
 
