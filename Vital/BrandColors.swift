@@ -12,33 +12,33 @@ extension Color {
     }
 }
 
-/// Brand colors — Emerald Health palette
+/// Brand colors — True Midnight palette
 enum Brand {
     // Functional (status)
-    static let optimal = Color(hex: 0x5AB88C)        // Sage green — good/optimal
+    static let optimal = Color(hex: 0xC9A84C)        // Soft gold — good/optimal
     static let warning = Color(hex: 0xE0A840)         // Bright gold — warning/borderline
     static let critical = Color(hex: 0xD45A5A)        // Muted red — critical/flag
-    static let accent = Color(hex: 0x5BA88C)          // Emerald — primary interactive
-    static let secondary = Color(hex: 0xC8923A)       // Dark amber — secondary interactive
+    static let accent = Color(hex: 0x8B8AE5)          // Periwinkle — primary interactive
+    static let secondary = Color(hex: 0xC9A84C)       // Soft gold — secondary interactive
 
     // Surfaces
-    static let bg = Color(hex: 0x0E1210)
-    static let card = Color(hex: 0x161E1A)
-    static let elevated = Color(hex: 0x1E2824)
+    static let bg = Color(hex: 0x080C1E)
+    static let card = Color(hex: 0x111530)
+    static let elevated = Color(hex: 0x1A1E40)
 
     // Text
-    static let textPrimary = Color(hex: 0xE8F0EC)     // Cream-green white
-    static let textSecondary = Color(hex: 0x8FA898)
-    static let textMuted = Color(hex: 0x5A6E62)
+    static let textPrimary = Color(hex: 0xD8D8F0)     // Light lavender white
+    static let textSecondary = Color(hex: 0x8888B0)
+    static let textMuted = Color(hex: 0x555578)
 
     // Gradients
     static let askVitalGradient = LinearGradient(
-        colors: [Color(hex: 0x3D7A5E), Color(hex: 0x78B8A2)],
+        colors: [Color(hex: 0x6868C0), Color(hex: 0x8B8AE5)],
         startPoint: .leading,
         endPoint: .trailing
     )
     static let avatarGradient = LinearGradient(
-        colors: [Color(hex: 0x3D7A5E), Color(hex: 0x5AB88C)],
+        colors: [Color(hex: 0xC9A84C), Color(hex: 0x8B8AE5)],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )

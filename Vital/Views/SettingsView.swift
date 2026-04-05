@@ -56,7 +56,7 @@ struct SettingsView: View {
                     Text("Daily Targets")
                         .foregroundColor(Brand.textMuted)
                 } footer: {
-                    Text("Edit targets on the web dashboard")
+                    Text("Update targets in your profile settings")
                         .foregroundColor(Brand.textMuted)
                 }
 

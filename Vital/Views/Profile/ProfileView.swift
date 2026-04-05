@@ -682,6 +682,8 @@ struct ProfileView: View {
             let jsonData = try JSONSerialization.data(withJSONObject: body)
             let _: SuccessResponse = try await apiService.postRaw("/profile/photo", jsonData: jsonData)
             HapticManager.success()
+        } catch let error as APIError where error.isCancelled {
+            // Silently ignore
         } catch {
             print("[Profile] Failed to upload avatar: \(error)")
             // Revert preview on failure

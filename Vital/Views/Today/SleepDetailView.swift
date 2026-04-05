@@ -96,9 +96,9 @@ struct SleepDetailView: View {
             if let s = stages, s.total > 0 {
                 // Stage bars
                 VStack(spacing: 10) {
-                    stageRow(label: "REM", minutes: s.rem, total: s.total, color: Color(hex: 0x7B68EE))
+                    stageRow(label: "REM", minutes: s.rem, total: s.total, color: Brand.secondary)
                     stageRow(label: "Core", minutes: s.core, total: s.total, color: Brand.accent)
-                    stageRow(label: "Deep", minutes: s.deep, total: s.total, color: Color(hex: 0x2E5A88))
+                    stageRow(label: "Deep", minutes: s.deep, total: s.total, color: Brand.accent.opacity(0.7))
                     stageRow(label: "Awake", minutes: s.awake, total: s.total + s.awake, color: Brand.warning.opacity(0.7))
                 }
             }
@@ -280,9 +280,9 @@ struct SleepDetailView: View {
         async let hrResult = healthKitService.querySleepHeartRate()
         async let metricsResult: APIResponse<[DailyMetric]> = apiService.get("/metrics", queryItems: [URLQueryItem(name: "days", value: "7")])
 
-        do { stages = try await stagesResult } catch { print("[SleepDetail] stages error: \(error)") }
-        do { heartRate = try await hrResult } catch { print("[SleepDetail] HR error: \(error)") }
-        do { weeklyMetrics = try await metricsResult.data ?? [] } catch { print("[SleepDetail] metrics error: \(error)") }
+        do { stages = try await stagesResult } catch { if !(error is CancellationError) { print("[SleepDetail] stages error: \(error)") } }
+        do { heartRate = try await hrResult } catch { if !(error is CancellationError) { print("[SleepDetail] HR error: \(error)") } }
+        do { weeklyMetrics = try await metricsResult.data ?? [] } catch { if !(error is CancellationError) { print("[SleepDetail] metrics error: \(error)") } }
 
         isLoading = false
     }

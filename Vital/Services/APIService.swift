@@ -117,6 +117,8 @@ import Observation
             (data, response) = try await session.data(for: request)
         } catch let urlError as URLError {
             switch urlError.code {
+            case .cancelled:
+                throw APIError.cancelled
             case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed:
                 throw APIError.offline
             case .timedOut:
@@ -168,6 +170,7 @@ enum APIError: LocalizedError {
     case offline
     case timeout
     case sslError
+    case cancelled
     case networkError(String)
     case serverError(statusCode: Int, body: String)
 
@@ -179,6 +182,7 @@ enum APIError: LocalizedError {
         case .offline: return "You're offline. Check your connection and try again."
         case .timeout: return "Request timed out. Try again."
         case .sslError: return "Secure connection failed. Try again in a moment."
+        case .cancelled: return nil // Silent — don't show error for cancelled requests
         case .networkError(let msg): return "Network error: \(msg)"
         case .serverError(let code, _): return "Server error (\(code))."
         }
@@ -186,6 +190,11 @@ enum APIError: LocalizedError {
 
     var isOffline: Bool {
         if case .offline = self { return true }
+        return false
+    }
+
+    var isCancelled: Bool {
+        if case .cancelled = self { return true }
         return false
     }
 }

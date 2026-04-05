@@ -3,6 +3,7 @@ import SwiftUI
 struct ActivityView: View {
     @Environment(APIService.self) var apiService
     @Environment(AuthService.self) var authService
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var meals: [NutritionEntry] = []
     @State private var targets: UserTargets?
@@ -33,11 +34,6 @@ struct ActivityView: View {
         todayMeals.reduce(0) { $0 + ($1.protein ?? 0) }
     }
 
-    // Active plan
-    private var activePlan: WorkoutPlan? {
-        plans.first { $0.isActive == true } ?? plans.first
-    }
-
     // Recent workouts (last 5)
     private var recentWorkouts: [Workout] {
         Array(workouts.prefix(5))
@@ -57,10 +53,6 @@ struct ActivityView: View {
                     ScrollView {
                         VStack(spacing: 16) {
                             nutritionSummaryCard
-                            // TODO: Re-enable active plan card
-                            // if let plan = activePlan {
-                            //     activePlanCard(plan)
-                            // }
                             recentWorkoutsSection
                         }
                         .padding(.horizontal, 16)
@@ -129,6 +121,14 @@ struct ActivityView: View {
             }
             .task {
                 await loadData()
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active && !isLoading {
+                    Task {
+                        _ = await authService.refreshSession()
+                        await loadData()
+                    }
+                }
             }
         }
     }
@@ -244,73 +244,6 @@ struct ActivityView: View {
             }
         }
         .frame(height: 4)
-    }
-
-    // MARK: - Active Plan Card
-
-    private func activePlanCard(_ plan: WorkoutPlan) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(plan.name)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundColor(.white)
-                    if let days = plan.planData?.days {
-                        Text("\(days.filter { !($0.isRest ?? false) }.count) training days/week")
-                            .font(.caption)
-                            .foregroundColor(Brand.textMuted)
-                    }
-                }
-                Spacer()
-                Image(systemName: "figure.strengthtraining.traditional")
-                    .font(.title3)
-                    .foregroundColor(Brand.secondary.opacity(0.5))
-            }
-
-            // Day buttons
-            if let days = plan.planData?.days, !days.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(days) { day in
-                            Button {
-                                if !(day.isRest ?? false) {
-                                    selectedPlan = plan
-                                    selectedPlanDay = day
-                                }
-                            } label: {
-                                VStack(spacing: 2) {
-                                    Text("D\(day.dayNumber)")
-                                        .font(.caption2.weight(.bold))
-                                    Text(day.isRest ?? false ? "Rest" : day.name)
-                                        .font(.system(size: 9))
-                                        .lineLimit(1)
-                                }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 8)
-                                .background(
-                                    (day.isRest ?? false)
-                                        ? Color.white.opacity(0.04)
-                                        : Brand.secondary.opacity(0.15)
-                                )
-                                .foregroundColor(
-                                    (day.isRest ?? false)
-                                        ? Brand.textMuted
-                                        : Brand.secondary
-                                )
-                                .cornerRadius(8)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        .padding(16)
-        .background(Brand.card)
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
-        )
     }
 
     // MARK: - Recent Workouts
@@ -472,6 +405,7 @@ struct ActivityView: View {
     // MARK: - Data
 
     private func loadData() async {
+        errorMessage = nil
         isLoading = meals.isEmpty && workouts.isEmpty
 
         do {
@@ -485,6 +419,10 @@ struct ActivityView: View {
             targets = t.data
             workouts = w.data ?? []
             plans = p.data ?? []
+            errorMessage = nil
+            isLoading = false
+        } catch let error as APIError where error.isCancelled {
+            // Silently ignore cancelled requests (happens on background/foreground transitions)
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription

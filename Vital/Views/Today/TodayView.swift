@@ -222,15 +222,17 @@ struct TodayView: View {
                     Task {
                         await loadData()
                         lastLoadTime = Date()
+                        triggerAnimations()
                     }
                 }
             }
             .onChange(of: scenePhase) { _, newPhase in
-                // Retry loading when returning to foreground if in error state
-                if newPhase == .active && errorMessage != nil {
+                if newPhase == .active && !isLoading {
                     Task {
+                        _ = await authService.refreshSession()
                         await loadData()
                         lastLoadTime = Date()
+                        triggerAnimations()
                     }
                 }
             }
@@ -676,6 +678,8 @@ struct TodayView: View {
             isLoading = false
             withAnimation { showContent = true }
             triggerAnimations()
+        } catch let error as APIError where error.isCancelled {
+            isLoading = false
         } catch {
             errorMessage = error.localizedDescription
             isLoading = false
@@ -687,8 +691,11 @@ struct TodayView: View {
         animateMetrics = false
         animateCalories = false
 
-        // Sync HealthKit data to backend — onChange(syncService.isSyncing) will reload data
+        // Sync HealthKit data, then reload and re-animate
         await syncService.sync()
+        await loadData()
+        lastLoadTime = Date()
+        triggerAnimations()
         HapticManager.success()
     }
 

@@ -67,7 +67,7 @@ struct SupplementsView: View {
                     Text("No supplements")
                         .font(.subheadline)
                         .foregroundColor(Brand.textMuted)
-                    Text("Add supplements on the web dashboard")
+                    Text("Tap + to add supplements or scan your bottles")
                         .font(.caption)
                         .foregroundColor(Brand.textMuted)
                 }
