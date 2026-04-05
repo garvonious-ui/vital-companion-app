@@ -8,6 +8,9 @@ struct ContentView: View {
     @State private var hasProfile = true // assume true until checked
     @State private var profileChecked = false
     @State private var onboardingComplete = false
+    @State private var deviceType: DeviceType?
+
+    private let deviceTypeKey = "selectedDeviceType"
 
     var body: some View {
         Group {
@@ -19,8 +22,13 @@ struct ContentView: View {
                 }
             } else if !authService.isSignedIn {
                 LoginView()
-            } else if !healthKitService.isAuthorized {
-                PermissionsView()
+            } else if deviceType == nil {
+                DeviceSelectionView { selected in
+                    deviceType = selected
+                    UserDefaults.standard.set(selected.rawValue, forKey: deviceTypeKey)
+                    // If Apple Watch was selected, HealthKit is now authorized
+                    // For other types, skip HealthKit gate
+                }
             } else if !profileChecked {
                 ZStack {
                     Brand.bg.ignoresSafeArea()
@@ -37,6 +45,28 @@ struct ContentView: View {
             if signedIn {
                 profileChecked = false
                 hasProfile = true
+                // Load saved device type
+                if let saved = UserDefaults.standard.string(forKey: deviceTypeKey),
+                   let type = DeviceType(rawValue: saved) {
+                    deviceType = type
+                } else {
+                    deviceType = nil
+                }
+            } else {
+                deviceType = nil
+            }
+        }
+        .onAppear {
+            // Restore device type for returning users
+            if authService.isSignedIn {
+                if let saved = UserDefaults.standard.string(forKey: deviceTypeKey),
+                   let type = DeviceType(rawValue: saved) {
+                    deviceType = type
+                } else if healthKitService.isAuthorized {
+                    // Existing user who already passed HealthKit gate
+                    deviceType = .appleWatch
+                    UserDefaults.standard.set(DeviceType.appleWatch.rawValue, forKey: deviceTypeKey)
+                }
             }
         }
     }
@@ -120,17 +150,24 @@ struct MainTabView: View {
             UITabBar.appearance().scrollEdgeAppearance = appearance
         }
         .task {
-            // Enable HealthKit background delivery + initial sync on launch
-            healthKitService.enableBackgroundDelivery()
-            await syncService.sync()
+            // Only sync HealthKit for Apple Watch / iPhone users
+            let savedDevice = UserDefaults.standard.string(forKey: "selectedDeviceType")
+                .flatMap { DeviceType(rawValue: $0) } ?? .appleWatch
+            if savedDevice.shouldSyncHealthKit {
+                healthKitService.enableBackgroundDelivery()
+                await syncService.sync()
+            }
             hasLaunched = true
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active && hasLaunched {
                 Task {
-                    // Refresh token first — it may have expired while backgrounded
                     _ = await authService.refreshSession()
-                    await syncService.sync()
+                    let savedDevice = UserDefaults.standard.string(forKey: "selectedDeviceType")
+                        .flatMap { DeviceType(rawValue: $0) } ?? .appleWatch
+                    if savedDevice.shouldSyncHealthKit {
+                        await syncService.sync()
+                    }
                 }
             }
         }

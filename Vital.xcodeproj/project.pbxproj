@@ -35,6 +35,7 @@
 		7EC8510CF896AD0ABE65028E /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 912219716956E7D281B60D89 /* Supabase */; };
 		82D43C3B7B02A84FCB7E8B84 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058387F7BF756B77029CBF41 /* DashboardView.swift */; };
 		83DB21F40AB3650F585440CA /* NutritionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 718093F3217EB8C9E568058A /* NutritionView.swift */; };
+		8718F9EF3ED0F35F45C2327C /* DeviceSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82534F92A1788707CFF5DCBD /* DeviceSelectionView.swift */; };
 		87CE45C7EC90057B7404D6C5 /* BrandColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECE28BE8DF3FB055E2BFD99E /* BrandColors.swift */; };
 		929ACBD19E455D8624BC7A68 /* SupplementFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 007156F6AEE52F5471FAC5B5 /* SupplementFormView.swift */; };
 		992C271EAF05E18D631CC48C /* SleepDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B2E36B5835F23D569F5FAC2 /* SleepDetailView.swift */; };
@@ -94,6 +95,7 @@
 		7A505619541FE752606DD517 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		7ECFC4ADFF01A5E7F7A5967F /* SkeletonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkeletonView.swift; sourceTree = "<group>"; };
 		81DA91D12D1CEA1BA42A24C8 /* HealthProfileEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthProfileEditView.swift; sourceTree = "<group>"; };
+		82534F92A1788707CFF5DCBD /* DeviceSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSelectionView.swift; sourceTree = "<group>"; };
 		86AC6E545186B05588923B37 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		9A64A47B9FD55661422FED52 /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
 		9B0D139DCAABA4FF1454DD9E /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
@@ -225,6 +227,7 @@
 			isa = PBXGroup;
 			children = (
 				86AC6E545186B05588923B37 /* ContentView.swift */,
+				82534F92A1788707CFF5DCBD /* DeviceSelectionView.swift */,
 				9B0D139DCAABA4FF1454DD9E /* LoginView.swift */,
 				6E0101990B2443858036D833 /* OnboardingView.swift */,
 				A9B3EDAE295BB5003567B7CF /* PermissionsView.swift */,
@@ -378,6 +381,7 @@
 				C691307B8AC193BFA5D584C6 /* Config.swift in Sources */,
 				306C873F89DB17082AAEF7DB /* ContentView.swift in Sources */,
 				82D43C3B7B02A84FCB7E8B84 /* DashboardView.swift in Sources */,
+				8718F9EF3ED0F35F45C2327C /* DeviceSelectionView.swift in Sources */,
 				F282960C5925F88C336ECA79 /* DocumentPicker.swift in Sources */,
 				DFB81B3371584E5D355161C8 /* EmptyStateView.swift in Sources */,
 				A493F1EAEB4E898E76428607 /* HapticManager.swift in Sources */,
@@ -546,7 +550,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Vital/Vital.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = A3W539C4C3;
 				INFOPLIST_FILE = Vital/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -567,7 +571,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Vital/Vital.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = A3W539C4C3;
 				INFOPLIST_FILE = Vital/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
