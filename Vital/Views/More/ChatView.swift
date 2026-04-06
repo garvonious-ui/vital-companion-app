@@ -10,6 +10,9 @@ struct ChatView: View {
     @State private var inputText: String = ""
     @State private var isStreaming = false
     @State private var streamTask: Task<Void, Never>?
+    @State private var pendingAction: ChatAction?
+    @State private var actionExecuting = false
+    @State private var actionResult: String?
 
     init(existingConversation: ChatConversation?) {
         self.existingConversation = existingConversation
@@ -33,6 +36,11 @@ struct ChatView: View {
                             ForEach(conversation.messages) { message in
                                 messageBubble(message)
                                     .id(message.id)
+                            }
+
+                            if let action = pendingAction {
+                                actionCard(action)
+                                    .id("action-card")
                             }
                         }
                         .padding(.horizontal, 16)
@@ -274,11 +282,205 @@ struct ChatView: View {
 
             await MainActor.run {
                 isStreaming = false
+                // Parse action from response
+                if let lastMessage = conversation.messages.last, lastMessage.role == .assistant {
+                    let parsed = ChatAction.parse(from: lastMessage.content)
+                    if let action = parsed.action {
+                        pendingAction = action
+                        // Strip action tag from displayed message
+                        conversation.messages[conversation.messages.count - 1].content = parsed.cleanContent
+                    }
+                }
                 // Auto-save after each response
                 conversation.updateTitle()
                 chatHistory.save(conversation)
             }
         }
+    }
+
+    // MARK: - Action Card
+
+    private func actionCard(_ action: ChatAction) -> some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: action.icon)
+                    .font(.title3)
+                    .foregroundColor(Brand.accent)
+                    .frame(width: 36, height: 36)
+                    .background(Brand.accent.opacity(0.15))
+                    .cornerRadius(8)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(action.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(Brand.textPrimary)
+                    Text(action.subtitle)
+                        .font(.caption)
+                        .foregroundColor(Brand.textSecondary)
+                }
+
+                Spacer()
+            }
+
+            if let result = actionResult {
+                Text(result)
+                    .font(.caption)
+                    .foregroundColor(Brand.optimal)
+            } else {
+                HStack(spacing: 12) {
+                    Button {
+                        Task { await executeAction(action) }
+                    } label: {
+                        HStack {
+                            if actionExecuting {
+                                ProgressView().tint(Brand.bg).scaleEffect(0.8)
+                            }
+                            Text(actionExecuting ? "Adding..." : "Yes, add it")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Brand.accent)
+                        .foregroundColor(Brand.bg)
+                        .cornerRadius(10)
+                    }
+                    .disabled(actionExecuting)
+
+                    Button {
+                        withAnimation { pendingAction = nil }
+                    } label: {
+                        Text("No thanks")
+                            .font(.subheadline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(Brand.elevated)
+                            .foregroundColor(Brand.textSecondary)
+                            .cornerRadius(10)
+                    }
+                    .disabled(actionExecuting)
+                }
+            }
+        }
+        .padding(14)
+        .background(Brand.card)
+        .cornerRadius(14)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Brand.accent.opacity(0.2), lineWidth: 1)
+        )
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    private func executeAction(_ action: ChatAction) async {
+        actionExecuting = true
+        defer { actionExecuting = false }
+
+        do {
+            switch action.type {
+            case .addSupplement:
+                let jsonData = try JSONSerialization.data(withJSONObject: action.payload)
+                let _: SuccessResponse = try await apiService.postRaw("/supplements", jsonData: jsonData)
+                actionResult = "Added to your supplements"
+
+            case .logWater:
+                let oz = action.payload["oz"] as? Double ?? action.payload["oz"] as? Int ?? 0
+                let dateStr = formatDate(Date())
+                let body: [String: Any] = ["date": dateStr, "waterOz": oz]
+                let jsonData = try JSONSerialization.data(withJSONObject: body)
+                let _: SuccessResponse = try await apiService.patchRaw("/metrics", jsonData: jsonData)
+                actionResult = "Logged \(oz)oz of water"
+
+            case .logSleep:
+                let hours = action.payload["hours"] as? Double ?? 0
+                let dateStr = formatDate(Date())
+                let body: [String: Any] = ["date": dateStr, "sleepHours": hours]
+                let jsonData = try JSONSerialization.data(withJSONObject: body)
+                let _: SuccessResponse = try await apiService.patchRaw("/metrics", jsonData: jsonData)
+                actionResult = "Logged \(hours)h of sleep"
+            }
+
+            HapticManager.success()
+        } catch {
+            actionResult = "Failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f.string(from: date)
+    }
+}
+
+// MARK: - Chat Action Model
+
+enum ChatActionType: String {
+    case addSupplement = "add_supplement"
+    case logWater = "log_water"
+    case logSleep = "log_sleep"
+}
+
+struct ChatAction {
+    let type: ChatActionType
+    let payload: [String: Any]
+
+    var icon: String {
+        switch type {
+        case .addSupplement: return "pill.fill"
+        case .logWater: return "drop.fill"
+        case .logSleep: return "moon.fill"
+        }
+    }
+
+    var title: String {
+        switch type {
+        case .addSupplement: return "Add Supplement"
+        case .logWater: return "Log Water"
+        case .logSleep: return "Log Sleep"
+        }
+    }
+
+    var subtitle: String {
+        switch type {
+        case .addSupplement:
+            let name = payload["name"] as? String ?? "Unknown"
+            let dosage = payload["dosage"] as? String ?? ""
+            return "\(name) \(dosage)".trimmingCharacters(in: .whitespaces)
+        case .logWater:
+            let oz = payload["oz"] as? Int ?? payload["oz"] as? Double ?? 0
+            return "\(oz)oz"
+        case .logSleep:
+            let hours = payload["hours"] as? Double ?? 0
+            return "\(hours) hours"
+        }
+    }
+
+    static func parse(from content: String) -> (action: ChatAction?, cleanContent: String) {
+        let pattern = #"\[ACTION:(\w+)\s+(\{[^]]+\})\]"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
+              let typeRange = Range(match.range(at: 1), in: content),
+              let jsonRange = Range(match.range(at: 2), in: content) else {
+            return (nil, content)
+        }
+
+        let typeStr = String(content[typeRange])
+        let jsonStr = String(content[jsonRange])
+
+        guard let actionType = ChatActionType(rawValue: typeStr),
+              let jsonData = jsonStr.data(using: .utf8),
+              let payload = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
+            return (nil, content)
+        }
+
+        // Remove action tag from content
+        let fullMatchRange = Range(match.range, in: content)!
+        var clean = content
+        clean.removeSubrange(fullMatchRange)
+        clean = clean.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return (ChatAction(type: actionType, payload: payload), clean)
     }
 }
 
