@@ -234,13 +234,13 @@
 - [ ] Recovery score weighting adjusts based on data source (Oura HRV vs Apple Watch HRV ranges differ)
 - [ ] Today tab adapts to available data sources (don't show empty cards for metrics the user's device doesn't track)
 
-### Nutrition Improvements (Future)
-- [ ] Add drinks as a meal type option (coffee, smoothie, protein shake, etc.)
-- [ ] Meal scan results — make output fields editable before saving (name, macros, items)
+### Nutrition Improvements
+- [x] Add drinks as a meal type option (coffee, smoothie, protein shake, etc.)
+- [x] Meal scan results — output fields already editable (name, type, macros are TextFields)
 
-### Manual Data Entry (Future)
-- [ ] Manual sleep logging — users without sleep tracking can enter hours slept
-- [ ] Editable meal scan fields — edit name, macros, items after photo scan before saving
+### Manual Data Entry
+- [x] Manual sleep logging — tap sleep card when empty → alert to enter hours
+- [x] Editable meal scan fields — name, type, macros all editable before saving
 
 ### Workout Plans (Future)
 - [ ] "Create plan on web dashboard" Safari link when no active plan
