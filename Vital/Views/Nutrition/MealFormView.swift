@@ -16,7 +16,7 @@ struct MealFormView: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
 
-    private let mealTypes = ["breakfast", "lunch", "dinner", "snack", "shake"]
+    private let mealTypes = ["breakfast", "lunch", "dinner", "snack", "shake", "drink"]
 
     private var isEditing: Bool { editingMeal != nil }
 

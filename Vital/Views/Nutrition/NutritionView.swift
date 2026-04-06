@@ -16,7 +16,7 @@ struct NutritionView: View {
     @State private var showAddOptions = false
     @State private var editingMeal: NutritionEntry?
 
-    private let mealOrder = ["breakfast", "lunch", "dinner", "snack", "shake"]
+    private let mealOrder = ["breakfast", "lunch", "dinner", "snack", "shake", "drink"]
 
     // MARK: - Computed
 
@@ -427,6 +427,7 @@ struct NutritionView: View {
             case "dinner": return ("moon.fill", Brand.secondary)
             case "snack": return ("leaf.fill", Brand.optimal)
             case "shake": return ("cup.and.saucer.fill", Brand.accent)
+            case "drink": return ("mug.fill", Brand.accent)
             default: return ("fork.knife", Brand.textSecondary)
             }
         }()

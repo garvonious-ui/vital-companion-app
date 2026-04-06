@@ -219,7 +219,7 @@ struct MealAnalysisView: View {
                         .font(.caption)
                         .foregroundColor(Brand.textSecondary)
                     HStack(spacing: 8) {
-                        ForEach(["Breakfast", "Lunch", "Dinner", "Snack", "Shake"], id: \.self) { type in
+                        ForEach(["Breakfast", "Lunch", "Dinner", "Snack", "Shake", "Drink"], id: \.self) { type in
                             Button(type) {
                                 mealType = type
                                 HapticManager.light()

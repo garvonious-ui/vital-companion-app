@@ -20,6 +20,8 @@ struct TodayView: View {
     @State private var showMealOptions = false
     @State private var showRecoveryInfo = false
     @State private var showWater = false
+    @State private var showSleepLog = false
+    @State private var sleepHoursInput = ""
     @State private var animateMetrics = false
     @State private var animateCalories = false
     @State private var recoveryAnimationKey = UUID()
@@ -212,6 +214,16 @@ struct TodayView: View {
 .sheet(isPresented: $showWater) {
                 WaterQuickAddView()
             }
+            .alert("Log Sleep", isPresented: $showSleepLog) {
+                TextField("Hours (e.g. 7.5)", text: $sleepHoursInput)
+                    .keyboardType(.decimalPad)
+                Button("Save") {
+                    Task { await saveSleep() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("How many hours did you sleep last night?")
+            }
             .task {
                 await loadData()
                 lastLoadTime = Date()
@@ -402,17 +414,35 @@ struct TodayView: View {
     private var metricsGrid: some View {
         let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
         return LazyVGrid(columns: columns, spacing: 12) {
-            NavigationLink {
-                SleepDetailView()
-            } label: {
-                metricCard(
-                    icon: "moon.fill",
-                    iconColor: Brand.secondary,
-                    label: "Sleep",
-                    value: today?.sleepHours.map { String(format: "%.1f", $0) } ?? "—",
-                    unit: "hrs",
-                    subtitle: sleepQualityLabel
-                )
+            Group {
+                if today?.sleepHours != nil {
+                    NavigationLink {
+                        SleepDetailView()
+                    } label: {
+                        metricCard(
+                            icon: "moon.fill",
+                            iconColor: Brand.secondary,
+                            label: "Sleep",
+                            value: today?.sleepHours.map { String(format: "%.1f", $0) } ?? "—",
+                            unit: "hrs",
+                            subtitle: sleepQualityLabel
+                        )
+                    }
+                } else {
+                    Button {
+                        sleepHoursInput = ""
+                        showSleepLog = true
+                    } label: {
+                        metricCard(
+                            icon: "moon.fill",
+                            iconColor: Brand.secondary,
+                            label: "Sleep",
+                            value: "—",
+                            unit: "hrs",
+                            subtitle: "Tap to log"
+                        )
+                    }
+                }
             }
             .scaleEffect(animateMetrics ? 1.0 : 0.92)
             .opacity(animateMetrics ? 1.0 : 0)
@@ -711,6 +741,21 @@ struct TodayView: View {
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             animateCalories = true
+        }
+    }
+
+    private func saveSleep() async {
+        guard let hours = Double(sleepHoursInput), hours > 0, hours <= 24 else { return }
+        let body: [String: Any] = ["date": formatDate(Date()), "sleepHours": hours]
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: body)
+            let _: SuccessResponse = try await apiService.patchRaw("/metrics", jsonData: jsonData)
+            HapticManager.success()
+            await loadData()
+            lastLoadTime = Date()
+            triggerAnimations()
+        } catch {
+            print("[TodayView] Failed to save sleep: \(error)")
         }
     }
 
