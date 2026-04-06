@@ -383,7 +383,7 @@ struct ChatView: View {
                 actionResult = "Added to your supplements"
 
             case .logWater:
-                let oz = action.payload["oz"] as? Double ?? action.payload["oz"] as? Int ?? 0
+                let oz = (action.payload["oz"] as? Double) ?? Double(action.payload["oz"] as? Int ?? 0)
                 let dateStr = formatDate(Date())
                 let body: [String: Any] = ["date": dateStr, "waterOz": oz]
                 let jsonData = try JSONSerialization.data(withJSONObject: body)
@@ -448,7 +448,7 @@ struct ChatAction {
             let dosage = payload["dosage"] as? String ?? ""
             return "\(name) \(dosage)".trimmingCharacters(in: .whitespaces)
         case .logWater:
-            let oz = payload["oz"] as? Int ?? payload["oz"] as? Double ?? 0
+            let oz = (payload["oz"] as? Int) ?? Int(payload["oz"] as? Double ?? 0)
             return "\(oz)oz"
         case .logSleep:
             let hours = payload["hours"] as? Double ?? 0
