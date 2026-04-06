@@ -244,8 +244,8 @@ struct MealAnalysisView: View {
                             .font(.caption)
                             .foregroundColor(Brand.textSecondary)
 
-                        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                            itemRow(item)
+                        ForEach(Array(items.indices), id: \.self) { index in
+                            editableItemRow(item: $items[index], index: index)
                                 .opacity(resultsAppeared ? 1 : 0)
                                 .offset(y: resultsAppeared ? 0 : 12)
                                 .animation(
@@ -356,33 +356,69 @@ struct MealAnalysisView: View {
         }
     }
 
-    // MARK: - Item Row
+    // MARK: - Editable Item Row
 
-    private func itemRow(_ item: MealItem) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.name)
+    private func editableItemRow(item: Binding<MealItem>, index: Int) -> some View {
+        VStack(spacing: 8) {
+            HStack {
+                TextField("Item name", text: item.name)
                     .font(.subheadline.weight(.medium))
                     .foregroundColor(Brand.textPrimary)
-                Text(item.estimatedPortion)
-                    .font(.caption)
-                    .foregroundColor(Brand.textSecondary)
+
+                Spacer()
+
+                Button {
+                    HapticManager.light()
+                    items.remove(at: index)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.caption)
+                        .foregroundColor(Brand.textMuted)
+                }
             }
 
-            Spacer()
+            TextField("Portion", text: item.estimatedPortion)
+                .font(.caption)
+                .foregroundColor(Brand.textSecondary)
 
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("\(item.calories) cal")
-                    .font(.subheadline.weight(.semibold).monospacedDigit())
-                    .foregroundColor(Brand.textPrimary)
-                Text("P:\(item.proteinG) C:\(item.carbsG) F:\(item.fatG)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundColor(Brand.textSecondary)
+            HStack(spacing: 8) {
+                itemMacroField("Cal", value: Binding(
+                    get: { String(item.wrappedValue.calories) },
+                    set: { item.wrappedValue.calories = Int($0) ?? 0 }
+                ))
+                itemMacroField("P", value: Binding(
+                    get: { String(item.wrappedValue.proteinG) },
+                    set: { item.wrappedValue.proteinG = Int($0) ?? 0 }
+                ))
+                itemMacroField("C", value: Binding(
+                    get: { String(item.wrappedValue.carbsG) },
+                    set: { item.wrappedValue.carbsG = Int($0) ?? 0 }
+                ))
+                itemMacroField("F", value: Binding(
+                    get: { String(item.wrappedValue.fatG) },
+                    set: { item.wrappedValue.fatG = Int($0) ?? 0 }
+                ))
             }
         }
         .padding(12)
         .background(Brand.card)
         .cornerRadius(10)
+    }
+
+    private func itemMacroField(_ label: String, value: Binding<String>) -> some View {
+        VStack(spacing: 2) {
+            TextField("0", text: value)
+                .keyboardType(.numberPad)
+                .font(.caption.weight(.semibold).monospacedDigit())
+                .foregroundColor(Brand.textPrimary)
+                .multilineTextAlignment(.center)
+                .padding(6)
+                .background(Brand.elevated)
+                .cornerRadius(6)
+            Text(label)
+                .font(.system(size: 9))
+                .foregroundColor(Brand.textMuted)
+        }
     }
 
     // MARK: - Confidence Badge
