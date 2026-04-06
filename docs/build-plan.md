@@ -142,9 +142,18 @@
 ### Session 16 Features
 - [x] Health Profile editable — HealthProfileEditView with preset pills + custom text fields for conditions/meds/goals
 - [x] Oura data import — Teresa's 22 days of Oura Ring data loaded (sleep, activity, HR, HRV, SpO2)
-- [x] Oura cron sync — GET /api/cron/sync-devices pulls last 3 days every 2 hours for all connected Oura users
+- [x] Oura cron sync — GET /api/cron/sync-devices (limited to daily on Hobby plan)
 - [x] vercel.json — cron schedule configured
 - [x] Teresa's Oura token stored in device_connections table
+
+### Sessions 17-18 Features
+- [x] True Midnight color palette — deep ink-blue surfaces, periwinkle accent, soft gold primary
+- [x] Device onboarding — "How do you track?" (Apple Watch / Oura / iPhone / Skip)
+- [x] Full app audit — 7 fixes (stale data, cancelled errors, dead code, hardcoded colors, web dashboard refs)
+- [x] Oura on-demand sync from iOS — POST /devices/oura/sync on app launch + foreground return
+- [x] Oura sleep date filter bug fix — unfiltered fetch catches today's data
+- [x] Teresa connected via OAuth on web dashboard
+- [x] Oura dev account — resubmitted with OAuth-connected user
 
 ### Bug Fixes (Session 10)
 - [x] Double load on app launch — debounce TodayView onChange reload (3s threshold), skip scenePhase sync on first launch
@@ -209,18 +218,29 @@
 - [ ] Garmin — OAuth + sync
 
 ### Recurring Device Sync
-- [x] Vercel cron job — pulls Oura data for all connected users every 2 hours
-- [x] Store device tokens in device_connections table (personal access token now, OAuth token once approved)
-- [x] Sync script: pull sleep, activity, SpO2 → UPDATE daily_metrics (don't overwrite HealthKit fields)
-- [ ] Oura webhooks (V2) — near real-time push when data is processed (replaces cron for Oura)
+- [x] Vercel cron job — daily fallback (Hobby plan limits to 1/day)
+- [x] Store device tokens in device_connections table
+- [x] On-demand sync from iOS app — POST /devices/oura/sync on launch + foreground return
+- [x] Oura sleep date filter workaround — unfiltered fetch merged with date-filtered to catch today's data
+- [ ] Oura webhooks (V2) — near real-time push when data is processed
 
-### Device Onboarding (Future)
-- [ ] Onboarding step: "How do you track?" — Apple Watch / Oura / Whoop / Garmin / None
-- [ ] Apple Watch path → HealthKit permissions (current flow)
-- [ ] Oura/Whoop/Garmin path → OAuth connect flow, HealthKit optional (iPhone still gives steps/distance)
-- [ ] No device path → skip device setup, manual logging only
+### Device Onboarding
+- [x] Onboarding step: "How do you track?" — Apple Watch / Oura / iPhone / Skip
+- [x] Apple Watch path → HealthKit permissions
+- [x] Oura path → skip HealthKit, data syncs via API
+- [x] iPhone path → optional HealthKit (basic steps/distance)
+- [x] No device path → skip device setup, manual logging only
+- [x] Existing HealthKit-authorized users auto-set to Apple Watch
 - [ ] Recovery score weighting adjusts based on data source (Oura HRV vs Apple Watch HRV ranges differ)
 - [ ] Today tab adapts to available data sources (don't show empty cards for metrics the user's device doesn't track)
+
+### Nutrition Improvements (Future)
+- [ ] Add drinks as a meal type option (coffee, smoothie, protein shake, etc.)
+- [ ] Meal scan results — make output fields editable before saving (name, macros, items)
+
+### Manual Data Entry (Future)
+- [ ] Manual sleep logging — users without sleep tracking can enter hours slept
+- [ ] Editable meal scan fields — edit name, macros, items after photo scan before saving
 
 ### Workout Plans (Future)
 - [ ] "Create plan on web dashboard" Safari link when no active plan

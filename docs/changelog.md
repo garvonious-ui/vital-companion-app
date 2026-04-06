@@ -1,5 +1,98 @@
 # Changelog — Vital Companion App
 
+## 2026-04-04/05 — Sessions 17-18
+
+### True Midnight Color Palette
+- Deep ink-blue surfaces (#080C1E bg, #111530 card, #1A1E40 elevated)
+- Periwinkle accent (#8B8AE5), soft gold primary/optimal (#C9A84C)
+- Lavender text tones (#D8D8F0, #8888B0, #555578)
+- Gold → periwinkle gradients for avatar + AI Insights button
+
+### Device Onboarding Flow
+- **DeviceSelectionView.swift** (new) — "How do you track?" screen after login
+- Options: Apple Watch (→ HealthKit), Oura Ring (→ skip to app), Just iPhone (→ optional HealthKit), Skip
+- Device choice saved to UserDefaults, restored on subsequent launches
+- Existing HealthKit-authorized users auto-set to Apple Watch (no re-prompt)
+- MainTabView conditionally skips HealthKit sync for non-Apple Watch users
+
+### Full App Audit — 7 Fixes
+- **TodayView scenePhase** — now refreshes data on every foreground return (was only on error)
+- **TodayView pull-to-refresh** — directly reloads + re-animates (was blocked by 3s debounce)
+- **ActivityView** — added scenePhase handler for foreground refresh + removed dead activePlanCard code
+- **APIService** — cancelled requests handled silently (new `.cancelled` case, returns nil errorDescription)
+- **SleepDetailView** — replaced hardcoded Color(hex:) with Brand.secondary/accent, ignores CancellationError
+- **ProfileView** — ignores cancelled errors on avatar upload
+- **SettingsView/SupplementsView** — removed "web dashboard" references, updated to in-app messaging
+
+### Oura On-Demand Sync
+- iOS app calls `POST /devices/oura/sync` on launch and foreground return for Oura users
+- Replaces cron approach (Vercel Hobby plan only allows daily crons)
+- Fixed Oura API date filter bug — sleep sessions not returned with date params but available without them
+- Fix: merged unfiltered `/sleep` response with date-filtered response (deduped by session id)
+- Cron route also updated with same fix + HR fallback endpoint
+
+### Oura Dev Account
+- Teresa connected via OAuth on web dashboard (proper "connected member")
+- Resubmitted Oura app for review with OAuth-connected user
+- Teresa's password reset for web dashboard access
+
+### Build Plan Updates
+- Added "Nutrition Improvements" section (drinks, editable scan results)
+- Checked off device onboarding items (5 of 7 done)
+- Updated recurring sync section (on-demand replaces cron)
+
+### Files Created
+- `Vital/Views/DeviceSelectionView.swift`
+
+### Files Modified (iOS)
+- `Vital/BrandColors.swift` — True Midnight palette
+- `Vital/Views/ContentView.swift` — device selection gate, Oura sync trigger, auto-detect existing users
+- `Vital/Views/Today/TodayView.swift` — scenePhase fix, pull-to-refresh fix, cancelled error handling
+- `Vital/Views/Activity/ActivityView.swift` — scenePhase handler, removed dead code, cancelled handling
+- `Vital/Services/APIService.swift` — `.cancelled` error case
+- `Vital/Views/Today/SleepDetailView.swift` — Brand colors, CancellationError handling
+- `Vital/Views/Profile/ProfileView.swift` — cancelled error handling on upload
+- `Vital/Views/SettingsView.swift` — removed "web dashboard" text
+- `Vital/Views/More/SupplementsView.swift` — updated empty state text
+- `Vital/Views/LoginView.swift` — name still "Vital" (Vesper reverted)
+- `Vital/Views/OnboardingView.swift` — name still "Vital"
+- `Vital/Views/PermissionsView.swift` — name still "Vital"
+
+### Files Modified (Web Dashboard)
+- `src/app/api/devices/oura/sync/route.ts` — unfiltered sleep merge fix
+- `src/app/api/cron/sync-devices/route.ts` — HR fallback, unfiltered sleep merge, daily_sleep fallback
+- `vercel.json` — cron limited to daily (Hobby plan)
+
+### Bugs Found
+- **Vercel Hobby plan** — only allows 1 cron/day, not every 2 hours. Our cron was never running. Switched to on-demand sync from iOS.
+- **CRON_SECRET whitespace** — env var had leading/trailing whitespace, rejected by Vercel deploy
+- **Oura API date filter bug** — `/sleep?start_date=2026-04-05` returns 0 sessions, but `/sleep` (no params) returns today's session. Timezone mismatch in Oura's API.
+- **Oura sleep sessions lag** — sleep session details appear in API much later than daily scores. Personal access token and OAuth token return identical results.
+
+### Decisions
+- On-demand sync from iOS instead of cron (better UX, no Hobby plan limit)
+- Vesper name reverted to Vital (not sold on it yet)
+- True Midnight palette kept (user approved darker bg)
+- Vercel Pro plan not needed — on-demand sync works without crons
+- Oura personal access tokens work fine alongside OAuth for data access
+
+### TestFlight
+- Builds 12, 13, 14 uploaded across sessions
+
+### Status
+- True Midnight palette: **Complete**
+- Device onboarding: **Complete (5/7 items)**
+- App audit fixes: **Complete (7/7)**
+- Oura sync: **Working via on-demand from iOS**
+- Oura dev account: **Resubmitted for review**
+
+### What's Next
+1. **App Store screenshots + description**
+2. **Test onboarding with new account**
+3. **Submit to App Store**
+4. **Verify Teresa's Oura data showing in app after build 14**
+5. **Oura dev account approval** — waiting on Oura review
+
 ## 2026-04-04 — Session 16
 
 ### Editable Health Profile
