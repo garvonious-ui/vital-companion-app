@@ -54,6 +54,16 @@ struct DeviceSelectionView: View {
                             Task { await connectOura() }
                         }
 
+                        // Whoop
+                        deviceButton(
+                            icon: "waveform.path",
+                            title: "Whoop",
+                            subtitle: "Enable Apple Health sharing in your Whoop app first, then connect here",
+                            color: Brand.optimal
+                        ) {
+                            Task { await connectAppleWatch() }
+                        }
+
                         // Just iPhone
                         deviceButton(
                             icon: "iphone",

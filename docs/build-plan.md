@@ -211,10 +211,11 @@
 
 ### Device Integrations (Future)
 - [x] Oura Ring — OAuth flow on web dashboard (code-complete, credentials deployed)
-- [ ] Oura Ring — test end-to-end with real ring
+- [x] Oura Ring — test end-to-end with real ring (Teresa connected, data syncing)
 - [x] Oura Ring — "Connect Devices" link in iOS app MoreView/Settings
 - [x] Oura Ring — dev account approved (new app, ten-user limit lifted)
-- [ ] Whoop — OAuth + sync (needed for runner beta tester)
+- [x] Oura Ring — in-app OAuth via ASWebAuthenticationSession
+- [x] Whoop — syncs via HealthKit (no API needed, user enables Apple Health in Whoop app)
 - [ ] Garmin — OAuth + sync
 
 ### Recurring Device Sync
@@ -247,11 +248,11 @@
 - [ ] Read-only plan detail view (tap plan card → full weekly schedule)
 - [ ] Native AI plan generator (port multi-step chat questionnaire from web)
 
-### AI Actions (Future)
-- [ ] AI can suggest data updates mid-conversation (add supplement, log water, log meal, update goals)
-- [ ] Action tags in AI response → parsed into inline confirmation cards in chat
-- [ ] User confirms → iOS calls existing API endpoints
-- [ ] Editable health profile from app (conditions, meds, goals) — preset pills + custom text
+### AI Actions
+- [x] AI can suggest data updates mid-conversation (add supplement, log water, log meal)
+- [x] Action tags in AI response → parsed into inline confirmation cards in chat
+- [x] User confirms → iOS calls existing API endpoints
+- [x] Editable health profile from app (conditions, meds, goals) — preset pills + custom text
 
 ### Run-Specific Features (Future — for runner beta tester)
 - [ ] Distance, pace, splits data from HealthKit

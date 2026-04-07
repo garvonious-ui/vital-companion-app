@@ -1,5 +1,97 @@
 # Changelog — Vital Companion App
 
+## 2026-04-06/07 — Sessions 19-20
+
+### Manual Sleep Logging
+- Sleep card on Today tab shows "Tap to log" when no sleep data
+- Alert prompts for hours slept, saves via PATCH /api/metrics
+- Recovery score recalculates immediately after saving
+- Backend: added `sleepHours` to PATCH /api/metrics handler
+
+### Nutrition Improvements
+- Added "Drink" as meal type (MealFormView, MealAnalysisView, NutritionView)
+- Drink icon (mug.fill) in nutrition list grouping
+- Meal scan detected items now fully editable (name, portion, cal/protein/carbs/fat per item)
+- Items can be removed with X button before saving
+
+### AI Actions
+- AI can now suggest data updates mid-conversation
+- System prompt instructs AI to output `[ACTION:type {...}]` tags
+- Supported actions: `add_supplement`, `log_water`, `log_sleep`
+- iOS parses action tags from streamed response, strips from displayed message
+- Inline confirmation card appears below AI response ("Yes, add it" / "No thanks")
+- On confirm: calls existing API endpoints (POST /supplements, PATCH /metrics)
+- Success/failure feedback with haptics
+
+### Oura In-App OAuth
+- **GET /api/devices/oura/connect-mobile** (new) — takes Bearer token, embeds user ID in OAuth state
+- **Callback updated** — detects `mobile:` state prefix, uses service role client to store tokens
+- Returns HTML success page for mobile flow ("Oura Connected! You can close this window.")
+- **DeviceSelectionView** — Oura button now opens ASWebAuthenticationSession with OAuth flow
+- OuraAuthPresenter for presentation context
+- New Oura app created and approved (ten-user limit lifted)
+- New credentials deployed to Vercel
+
+### Whoop Integration
+- Whoop syncs via HealthKit — no API integration needed
+- Added Whoop button to DeviceSelectionView (triggers HealthKit permissions)
+- Subtitle: "Enable Apple Health sharing in your Whoop app first, then connect here"
+- Confirmed working with real Whoop user
+
+### Oura Dev Account
+- First app rejected twice (no connected users detected)
+- Created new application with proper description, URLs, and scopes
+- Teresa connected via new app's OAuth
+- Approved with ten-user limit lifted
+
+### Backend Fixes
+- Fixed Supabase type errors in cron route (cast to `any` for dynamic updates)
+- Fixed CRON_SECRET whitespace issue blocking all Vercel deploys
+- Multiple force deploys needed to get routes picked up
+
+### Files Created
+- `src/app/api/devices/oura/connect-mobile/route.ts` (web dashboard)
+
+### Files Modified (iOS)
+- `Vital/Views/DeviceSelectionView.swift` — Oura OAuth, Whoop button, OuraAuthPresenter
+- `Vital/Views/Today/TodayView.swift` — manual sleep logging (tap to log, saveSleep)
+- `Vital/Views/Nutrition/MealAnalysisView.swift` — editable items, drink type
+- `Vital/Views/Nutrition/MealFormView.swift` — drink type
+- `Vital/Views/Nutrition/NutritionView.swift` — drink type + icon
+- `Vital/Views/More/ChatView.swift` — AI action parsing, confirmation cards, execution
+
+### Files Modified (Web Dashboard)
+- `src/lib/ai-context.ts` — action system in system prompt
+- `src/app/api/devices/oura/callback/route.ts` — mobile flow support
+- `src/app/api/metrics/route.ts` — sleepHours in PATCH handler
+- `src/app/api/cron/sync-devices/route.ts` — type error fixes
+
+### TestFlight
+- Builds 15, 16 uploaded
+
+### Decisions
+- Whoop doesn't need API integration — HealthKit bridge is sufficient
+- Oura OAuth in-app uses ASWebAuthenticationSession (not SFSafariViewController)
+- AI action tags parsed client-side from streamed text (no native Claude tool_use)
+- New Oura app created rather than fighting rejected app resubmission
+- Vercel Hobby plan cron limitations accepted — on-demand sync from iOS is better UX anyway
+
+### Status
+- AI Actions: **Complete and tested**
+- Oura in-app OAuth: **Complete, deployed**
+- Oura dev account: **Approved**
+- Whoop: **Working via HealthKit**
+- Manual sleep: **Complete**
+- Nutrition editable items: **Complete**
+- Drink meal type: **Complete**
+
+### What's Next
+1. **App Store screenshots + description**
+2. **Test onboarding with new account**
+3. **Submit to App Store**
+4. **Garmin integration** (if needed)
+5. **Recovery score weighting by device source**
+
 ## 2026-04-04/05 — Sessions 17-18
 
 ### True Midnight Color Palette
