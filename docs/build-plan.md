@@ -213,7 +213,7 @@
 - [x] Oura Ring — OAuth flow on web dashboard (code-complete, credentials deployed)
 - [ ] Oura Ring — test end-to-end with real ring
 - [x] Oura Ring — "Connect Devices" link in iOS app MoreView/Settings
-- [ ] Oura Ring — get dev account approved (updated description, URLs submitted)
+- [x] Oura Ring — dev account approved (new app, ten-user limit lifted)
 - [ ] Whoop — OAuth + sync (needed for runner beta tester)
 - [ ] Garmin — OAuth + sync
 

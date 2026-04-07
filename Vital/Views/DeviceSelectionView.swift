@@ -1,8 +1,11 @@
 import SwiftUI
+import AuthenticationServices
 
 struct DeviceSelectionView: View {
     @Environment(HealthKitService.self) var healthKitService
+    @Environment(AuthService.self) var authService
     @State private var isRequestingHealthKit = false
+    @State private var isConnectingOura = false
     @State private var errorMessage: String?
 
     let onComplete: (DeviceType) -> Void
@@ -45,10 +48,10 @@ struct DeviceSelectionView: View {
                         deviceButton(
                             icon: "circle.circle",
                             title: "Oura Ring",
-                            subtitle: "Syncs sleep, readiness, heart rate, HRV, SpO2",
+                            subtitle: isConnectingOura ? "Connecting..." : "Syncs sleep, readiness, heart rate, HRV, SpO2",
                             color: Brand.secondary
                         ) {
-                            onComplete(.oura)
+                            Task { await connectOura() }
                         }
 
                         // Just iPhone
@@ -142,6 +145,44 @@ struct DeviceSelectionView: View {
         }
     }
 
+    private func connectOura() async {
+        isConnectingOura = true
+        defer { isConnectingOura = false }
+
+        guard let token = await authService.accessToken() else {
+            errorMessage = "Not signed in"
+            return
+        }
+
+        let urlString = "\(Config.apiBaseURL)/devices/oura/connect-mobile?token=\(token)"
+        guard let url = URL(string: urlString) else {
+            errorMessage = "Invalid URL"
+            return
+        }
+
+        // Use ASWebAuthenticationSession for OAuth
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let session = ASWebAuthenticationSession(
+                url: url,
+                callbackURLScheme: nil
+            ) { _, error in
+                // User either completed OAuth or cancelled
+                if let error = error as? ASWebAuthenticationSessionError,
+                   error.code == .canceledLogin {
+                    // User cancelled — that's fine if they already authorized
+                }
+                continuation.resume()
+            }
+            session.presentationContextProvider = OuraAuthPresenter.shared
+            session.prefersEphemeralWebBrowserSession = false
+            session.start()
+        }
+
+        // After the browser closes, assume success and proceed
+        HapticManager.success()
+        onComplete(.oura)
+    }
+
     private func connectiPhone() async {
         isRequestingHealthKit = true
         defer { isRequestingHealthKit = false }
@@ -154,6 +195,18 @@ struct DeviceSelectionView: View {
             // iPhone users can proceed even if HealthKit denied
             onComplete(.iPhone)
         }
+    }
+}
+
+// MARK: - Auth Presenter
+
+class OuraAuthPresenter: NSObject, ASWebAuthenticationPresentationContextProviding {
+    static let shared = OuraAuthPresenter()
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow } ?? ASPresentationAnchor()
     }
 }
 
