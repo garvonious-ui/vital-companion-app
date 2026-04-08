@@ -13,6 +13,7 @@ struct NutritionView: View {
     @State private var errorMessage: String?
     @State private var showMealForm = false
     @State private var showMealScan = false
+    @State private var showFoodSearch = false
     @State private var showAddOptions = false
     @State private var editingMeal: NutritionEntry?
 
@@ -99,6 +100,7 @@ struct NutritionView: View {
                 }
             }
             .confirmationDialog("Log Meal", isPresented: $showAddOptions) {
+                Button("🔍 Search Food Database") { showFoodSearch = true }
                 Button("📸 Scan Meal Photo") { showMealScan = true }
                 Button("✏️ Log Manually") { showMealForm = true }
                 Button("Cancel", role: .cancel) {}
@@ -117,6 +119,13 @@ struct NutritionView: View {
                 MealAnalysisView(authService: authService) {
                     Task { await loadData() }
                 }
+            }
+            .sheet(isPresented: $showFoodSearch, onDismiss: {
+                Task { await loadData() }
+            }) {
+                FoodSearchView(date: dateString, onSaved: {
+                    Task { await loadData() }
+                })
             }
             .task {
                 await loadData()

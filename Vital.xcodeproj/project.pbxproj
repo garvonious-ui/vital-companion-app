@@ -53,6 +53,7 @@
 		E02FFF0EC6709E0683FC0AE6 /* MacroBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 789FB3B558E209BB25525EB1 /* MacroBar.swift */; };
 		E8C5E7FC3EB83D965E3B51A6 /* MealAnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDE6CC668BDDFEA9882201EA /* MealAnalysisView.swift */; };
 		EB251EBF97EFDAADDA19C673 /* SyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB14AFD38B7C66C7EC36CFF4 /* SyncStatusView.swift */; };
+		ED92227C1493D334BB52375B /* FoodSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF5FD36F9A9B12A3041C2D03 /* FoodSearchView.swift */; };
 		F282960C5925F88C336ECA79 /* DocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A453F8F5AFBEE93612CD2DDA /* DocumentPicker.swift */; };
 		F2B878F1B30A5DDE8FD7042E /* RecoveryRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524A95CB42E653597360F8F1 /* RecoveryRing.swift */; };
 		F4B947C98349231AE4312579 /* QuickLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11FD45DA6073A9AF4653948C /* QuickLogView.swift */; };
@@ -103,6 +104,7 @@
 		A9B3EDAE295BB5003567B7CF /* PermissionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsView.swift; sourceTree = "<group>"; };
 		A9C464C536715D7CD233F022 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		AAA86C9E18CF5593EEA2BC55 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		AF5FD36F9A9B12A3041C2D03 /* FoodSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodSearchView.swift; sourceTree = "<group>"; };
 		B0F1B423C74B0B70BC5C0B02 /* CameraPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPicker.swift; sourceTree = "<group>"; };
 		C5D0B47920B557F8962A90F7 /* WaterQuickAddView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterQuickAddView.swift; sourceTree = "<group>"; };
 		CBF73ED4E98DCD72ABD704F1 /* HealthKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitService.swift; sourceTree = "<group>"; };
@@ -260,6 +262,7 @@
 			isa = PBXGroup;
 			children = (
 				B0F1B423C74B0B70BC5C0B02 /* CameraPicker.swift */,
+				AF5FD36F9A9B12A3041C2D03 /* FoodSearchView.swift */,
 				FDE6CC668BDDFEA9882201EA /* MealAnalysisView.swift */,
 				234C8B4F374F1A11E2A462BE /* MealFormView.swift */,
 				718093F3217EB8C9E568058A /* NutritionView.swift */,
@@ -384,6 +387,7 @@
 				8718F9EF3ED0F35F45C2327C /* DeviceSelectionView.swift in Sources */,
 				F282960C5925F88C336ECA79 /* DocumentPicker.swift in Sources */,
 				DFB81B3371584E5D355161C8 /* EmptyStateView.swift in Sources */,
+				ED92227C1493D334BB52375B /* FoodSearchView.swift in Sources */,
 				A493F1EAEB4E898E76428607 /* HapticManager.swift in Sources */,
 				61B1EE2C30CD7785928F53FA /* HealthData.swift in Sources */,
 				72BE40C3C30A9684A7C89300 /* HealthKitService.swift in Sources */,

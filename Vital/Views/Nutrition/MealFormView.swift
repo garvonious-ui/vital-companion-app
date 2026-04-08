@@ -7,6 +7,13 @@ struct MealFormView: View {
     let date: String
     let editingMeal: NutritionEntry?
 
+    // Optional prefill values from FoodSearchView
+    var prefillName: String = ""
+    var prefillCalories: String = ""
+    var prefillProtein: String = ""
+    var prefillCarbs: String = ""
+    var prefillFat: String = ""
+
     @State private var name: String = ""
     @State private var mealType: String = "lunch"
     @State private var calories: String = ""
@@ -129,6 +136,12 @@ struct MealFormView: View {
                     protein = meal.protein.map { String(Int($0)) } ?? ""
                     carbs = meal.carbs.map { String(Int($0)) } ?? ""
                     fat = meal.fat.map { String(Int($0)) } ?? ""
+                } else if !prefillName.isEmpty {
+                    name = prefillName
+                    calories = prefillCalories
+                    protein = prefillProtein
+                    carbs = prefillCarbs
+                    fat = prefillFat
                 }
             }
         }
