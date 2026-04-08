@@ -17,6 +17,7 @@ struct TodayView: View {
     @State private var showChat = false
     @State private var showMealForm = false
     @State private var showMealScan = false
+    @State private var showFoodSearch = false
     @State private var showMealOptions = false
     @State private var showRecoveryInfo = false
     @State private var showWater = false
@@ -201,6 +202,7 @@ struct TodayView: View {
                 }
             }
             .confirmationDialog("Log Meal", isPresented: $showMealOptions) {
+                Button("🔍 Search Food Database") { showFoodSearch = true }
                 Button("📸 Scan Meal Photo") { showMealScan = true }
                 Button("✏️ Log Manually") { showMealForm = true }
                 Button("Cancel", role: .cancel) {}
@@ -210,6 +212,9 @@ struct TodayView: View {
             }
             .sheet(isPresented: $showMealScan) {
                 MealAnalysisView(authService: authService)
+            }
+            .sheet(isPresented: $showFoodSearch) {
+                FoodSearchView(date: todayDateString, onSaved: nil)
             }
 .sheet(isPresented: $showWater) {
                 WaterQuickAddView()
