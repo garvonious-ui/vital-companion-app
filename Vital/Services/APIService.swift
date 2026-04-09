@@ -184,7 +184,9 @@ enum APIError: LocalizedError {
         case .sslError: return "Secure connection failed. Try again in a moment."
         case .cancelled: return nil // Silent — don't show error for cancelled requests
         case .networkError(let msg): return "Network error: \(msg)"
-        case .serverError(let code, _): return "Server error (\(code))."
+        case .serverError(let code, let body):
+            let snippet = body.isEmpty ? "" : " — \(body.prefix(120))"
+            return "Server error \(code)\(snippet)"
         }
     }
 

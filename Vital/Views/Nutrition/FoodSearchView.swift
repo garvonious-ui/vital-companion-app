@@ -37,6 +37,30 @@ struct FoodServing: Codable, Identifiable, Sendable {
     let fat: Double
 }
 
+/// Identifiable payload for `.sheet(item:)` — ensures MealFormView receives fresh prefill
+/// values atomically, avoiding the stale-@State race when using `.sheet(isPresented:)`.
+struct MealPrefill: Identifiable {
+    let id = UUID()
+    let name: String
+    let calories: String
+    let protein: String
+    let carbs: String
+    let fat: String
+}
+
+/// One staged item in the multi-item meal cart. Macros are already
+/// scaled by serving size and quantity multiplier.
+struct MealCartItem: Identifiable, Sendable {
+    let id = UUID()
+    let foodName: String
+    let brandName: String?
+    let servingDescription: String   // e.g. "1 serving × 1.5"
+    let calories: Int
+    let protein: Double
+    let carbs: Double
+    let fat: Double
+}
+
 struct FoodSearchView: View {
     @Environment(APIService.self) var apiService
     @Environment(\.dismiss) private var dismiss
@@ -50,16 +74,14 @@ struct FoodSearchView: View {
     @State private var selectedFood: FoodDetail?
     @State private var selectedServing: FoodServing?
     @State private var servingMultiplier = 1.0
-    @State private var showMealForm = false
+    @State private var mealPrefill: MealPrefill?
     @State private var isSaving = false
     @State private var searchTask: Task<Void, Never>?
 
-    // Pre-filled values for MealFormView
-    @State private var prefillName = ""
-    @State private var prefillCalories = ""
-    @State private var prefillProtein = ""
-    @State private var prefillCarbs = ""
-    @State private var prefillFat = ""
+    // Multi-item meal cart
+    @State private var mealCart: [MealCartItem] = []
+    @State private var showReview = false
+    @State private var showCancelConfirm = false
 
     var body: some View {
         NavigationStack {
@@ -98,8 +120,13 @@ struct FoodSearchView: View {
                                 .foregroundColor(Brand.textSecondary)
                             Button {
                                 // Pre-fill name and go to manual form
-                                prefillName = searchText
-                                showMealForm = true
+                                mealPrefill = MealPrefill(
+                                    name: searchText,
+                                    calories: "",
+                                    protein: "",
+                                    carbs: "",
+                                    fat: ""
+                                )
                             } label: {
                                 Text("Log manually instead")
                                     .font(.subheadline.weight(.semibold))
@@ -123,15 +150,39 @@ struct FoodSearchView: View {
                     }
                 }
             }
+            .safeAreaInset(edge: .bottom) {
+                if !mealCart.isEmpty {
+                    cartBar
+                }
+            }
             .navigationTitle("Search Foods")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .foregroundColor(Brand.accent)
+                    Button("Cancel") {
+                        if mealCart.isEmpty {
+                            dismiss()
+                        } else {
+                            // Confirm before discarding cart
+                            showCancelConfirm = true
+                        }
+                    }
+                    .foregroundColor(Brand.accent)
                 }
             }
+            .confirmationDialog("Discard meal?", isPresented: $showCancelConfirm, titleVisibility: .visible) {
+                Button("Discard \(mealCart.count) item\(mealCart.count == 1 ? "" : "s")", role: .destructive) {
+                    mealCart.removeAll()
+                    dismiss()
+                }
+                Button("Keep editing", role: .cancel) {}
+            }
             .onChange(of: searchText) { _, newValue in
+                // Any new search query clears the previously-selected food detail so
+                // the user sees the results list, not a stale serving picker.
+                selectedFood = nil
+                selectedServing = nil
+
                 searchTask?.cancel()
                 guard newValue.trimmingCharacters(in: .whitespaces).count >= 2 else {
                     results = []
@@ -144,16 +195,34 @@ struct FoodSearchView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showMealForm) {
+            .sheet(item: $mealPrefill) { prefill in
                 MealFormView(
                     date: date,
                     editingMeal: nil,
-                    prefillName: prefillName,
-                    prefillCalories: prefillCalories,
-                    prefillProtein: prefillProtein,
-                    prefillCarbs: prefillCarbs,
-                    prefillFat: prefillFat
+                    prefillName: prefill.name,
+                    prefillCalories: prefill.calories,
+                    prefillProtein: prefill.protein,
+                    prefillCarbs: prefill.carbs,
+                    prefillFat: prefill.fat,
+                    onSaved: {
+                        // Meal saved → notify the parent view (refreshes its data)
+                        // and close the food search sheet so the user lands back on
+                        // the screen they started from.
+                        onSaved?()
+                        dismiss()
+                    }
                 )
+            }
+            .sheet(isPresented: $showReview) {
+                MealReviewView(
+                    date: date,
+                    items: $mealCart,
+                    onSaved: {
+                        onSaved?()
+                        dismiss()
+                    }
+                )
+                .environment(apiService)
             }
         }
     }
@@ -312,22 +381,20 @@ struct FoodSearchView: View {
                         }
                         .padding(.horizontal, 16)
 
-                        // Add button
+                        // Add to meal cart
                         Button {
-                            prefillName = food.name
-                            prefillCalories = "\(Int(Double(serving.calories) * servingMultiplier))"
-                            prefillProtein = String(format: "%.0f", serving.protein * servingMultiplier)
-                            prefillCarbs = String(format: "%.0f", serving.carbs * servingMultiplier)
-                            prefillFat = String(format: "%.0f", serving.fat * servingMultiplier)
-                            showMealForm = true
+                            addCurrentFoodToCart(food: food, serving: serving)
                         } label: {
-                            Text("Add to Meal Log")
-                                .font(.headline)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Brand.accent)
-                                .foregroundColor(Brand.bg)
-                                .cornerRadius(12)
+                            HStack(spacing: 8) {
+                                Image(systemName: "plus.circle.fill")
+                                Text(mealCart.isEmpty ? "Add to Meal" : "Add Another (\(mealCart.count) so far)")
+                            }
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Brand.accent)
+                            .foregroundColor(Brand.bg)
+                            .cornerRadius(12)
                         }
                         .padding(.horizontal, 16)
                     }
@@ -346,6 +413,87 @@ struct FoodSearchView: View {
             }
             .padding(.bottom, 24)
         }
+    }
+
+    // MARK: - Cart Bar
+
+    private var cartTotalCalories: Int {
+        mealCart.reduce(0) { $0 + $1.calories }
+    }
+
+    private var cartTotalProtein: Double {
+        mealCart.reduce(0) { $0 + $1.protein }
+    }
+
+    private var cartBar: some View {
+        Button {
+            showReview = true
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Brand.accent)
+                        .frame(width: 36, height: 36)
+                    Text("\(mealCart.count)")
+                        .font(.headline.monospacedDigit())
+                        .foregroundColor(Brand.bg)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(mealCart.count) item\(mealCart.count == 1 ? "" : "s") in meal")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(Brand.textPrimary)
+                    Text("\(cartTotalCalories) cal · \(Int(cartTotalProtein))g protein")
+                        .font(.caption.monospacedDigit())
+                        .foregroundColor(Brand.textSecondary)
+                }
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    Text("Review")
+                        .font(.subheadline.weight(.semibold))
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                }
+                .foregroundColor(Brand.accent)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Brand.elevated)
+            .overlay(
+                Rectangle()
+                    .frame(height: 1)
+                    .foregroundColor(Color.white.opacity(0.06)),
+                alignment: .top
+            )
+        }
+    }
+
+    // MARK: - Cart Actions
+
+    private func addCurrentFoodToCart(food: FoodDetail, serving: FoodServing) {
+        let mult = servingMultiplier
+        let item = MealCartItem(
+            foodName: food.name,
+            brandName: food.brandName,
+            servingDescription: mult == 1.0
+                ? serving.description
+                : "\(serving.description) × \(String(format: "%.1f", mult))",
+            calories: Int(Double(serving.calories) * mult),
+            protein: serving.protein * mult,
+            carbs: serving.carbs * mult,
+            fat: serving.fat * mult
+        )
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+            mealCart.append(item)
+        }
+        HapticManager.success()
+
+        // Reset the picker so the user lands back on the results list and can add more.
+        selectedFood = nil
+        selectedServing = nil
+        servingMultiplier = 1.0
     }
 
     private func macroCard(_ label: String, value: String, color: Color) -> some View {
@@ -393,12 +541,262 @@ struct FoodSearchView: View {
             }
         } catch {
             // Fallback: use search result data directly
-            prefillName = result.name
-            prefillCalories = result.calories.map { "\($0)" } ?? ""
-            prefillProtein = result.protein.map { String(format: "%.0f", $0) } ?? ""
-            prefillCarbs = result.carbs.map { String(format: "%.0f", $0) } ?? ""
-            prefillFat = result.fat.map { String(format: "%.0f", $0) } ?? ""
-            showMealForm = true
+            mealPrefill = MealPrefill(
+                name: result.name,
+                calories: result.calories.map { "\($0)" } ?? "",
+                protein: result.protein.map { String(format: "%.0f", $0) } ?? "",
+                carbs: result.carbs.map { String(format: "%.0f", $0) } ?? "",
+                fat: result.fat.map { String(format: "%.0f", $0) } ?? ""
+            )
+        }
+    }
+}
+
+// MARK: - Meal Review View
+
+/// Final review + save step for a multi-item meal. Reads/writes the cart via binding so the
+/// parent FoodSearchView can clear it on success.
+struct MealReviewView: View {
+    @Environment(APIService.self) var apiService
+    @Environment(\.dismiss) private var dismiss
+
+    let date: String
+    @Binding var items: [MealCartItem]
+    let onSaved: () -> Void
+
+    @State private var mealName: String = ""
+    @State private var mealType: String = "Lunch"
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+    @State private var didInitName = false
+
+    private let mealTypes = ["Breakfast", "Lunch", "Dinner", "Snack", "Shake", "Drink"]
+
+    private var totalCalories: Int { items.reduce(0) { $0 + $1.calories } }
+    private var totalProtein: Double { items.reduce(0) { $0 + $1.protein } }
+    private var totalCarbs: Double { items.reduce(0) { $0 + $1.carbs } }
+    private var totalFat: Double { items.reduce(0) { $0 + $1.fat } }
+
+    /// Compose a smart default name. If all items share a brand, use "Brand: A, B, C".
+    /// Otherwise, just join names. Truncate to first 3 if there are many.
+    private func composedName() -> String {
+        let displayItems = items.prefix(3)
+        let suffix = items.count > 3 ? " + \(items.count - 3) more" : ""
+        let names = displayItems.map(\.foodName).joined(separator: ", ")
+
+        let allBrands = Set(items.compactMap { $0.brandName })
+        if allBrands.count == 1, let brand = allBrands.first {
+            return "\(brand): \(names)\(suffix)"
+        }
+        return "\(names)\(suffix)"
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Brand.bg.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // Meal type
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Meal Type")
+                                .font(.caption.weight(.medium))
+                                .foregroundColor(Brand.textSecondary)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(mealTypes, id: \.self) { type in
+                                        Button {
+                                            mealType = type
+                                            HapticManager.light()
+                                        } label: {
+                                            Text(type)
+                                                .font(.caption.weight(.medium))
+                                                .padding(.horizontal, 14)
+                                                .padding(.vertical, 8)
+                                                .background(mealType == type ? Brand.accent.opacity(0.2) : Brand.elevated)
+                                                .foregroundColor(mealType == type ? Brand.accent : Brand.textSecondary)
+                                                .cornerRadius(8)
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 8)
+                                                        .stroke(mealType == type ? Brand.accent.opacity(0.4) : Color.clear, lineWidth: 1)
+                                                )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Meal name
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Meal Name")
+                                .font(.caption.weight(.medium))
+                                .foregroundColor(Brand.textSecondary)
+                            TextField("Meal name", text: $mealName)
+                                .textFieldStyle(DarkFieldStyle())
+                        }
+
+                        // Items
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("ITEMS (\(items.count))")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(Brand.textMuted)
+
+                            VStack(spacing: 6) {
+                                ForEach(items) { item in
+                                    itemRow(item)
+                                }
+                            }
+                        }
+
+                        // Totals
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("TOTALS")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(Brand.textMuted)
+
+                            HStack(spacing: 12) {
+                                totalsCard("Calories", value: "\(totalCalories)", color: Brand.textPrimary)
+                                totalsCard("Protein", value: "\(Int(totalProtein))g", color: Brand.accent)
+                                totalsCard("Carbs", value: "\(Int(totalCarbs))g", color: Brand.secondary)
+                                totalsCard("Fat", value: "\(Int(totalFat))g", color: Brand.critical)
+                            }
+                        }
+
+                        // Error
+                        if let error = errorMessage {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(Brand.critical)
+                                .padding(10)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Brand.critical.opacity(0.1))
+                                .cornerRadius(8)
+                        }
+
+                        // Save button
+                        Button {
+                            Task { await save() }
+                        } label: {
+                            HStack {
+                                if isSaving {
+                                    ProgressView().tint(Brand.bg)
+                                } else {
+                                    Text("Save Meal")
+                                        .font(.headline)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(items.isEmpty ? Brand.elevated : Brand.accent)
+                            .foregroundColor(Brand.bg)
+                            .cornerRadius(12)
+                        }
+                        .disabled(items.isEmpty || isSaving || mealName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle("Review Meal")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { dismiss() }
+                        .foregroundColor(Brand.accent)
+                }
+            }
+            .onAppear {
+                // Only initialize the name once so the user's edits aren't clobbered
+                // when items are removed.
+                if !didInitName {
+                    mealName = composedName()
+                    didInitName = true
+                }
+            }
+        }
+    }
+
+    private func itemRow(_ item: MealCartItem) -> some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.foodName)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundColor(Brand.textPrimary)
+                    .lineLimit(1)
+                Text("\(item.servingDescription) · \(item.calories) cal")
+                    .font(.caption)
+                    .foregroundColor(Brand.textMuted)
+            }
+            Spacer()
+            Button {
+                if let idx = items.firstIndex(where: { $0.id == item.id }) {
+                    _ = withAnimation {
+                        items.remove(at: idx)
+                    }
+                    HapticManager.light()
+                }
+            } label: {
+                Image(systemName: "minus.circle.fill")
+                    .font(.title3)
+                    .foregroundColor(Brand.textMuted)
+            }
+        }
+        .padding(12)
+        .background(Brand.card)
+        .cornerRadius(10)
+    }
+
+    private func totalsCard(_ label: String, value: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.subheadline.weight(.bold).monospacedDigit())
+                .foregroundColor(color)
+            Text(label)
+                .font(.caption2)
+                .foregroundColor(Brand.textMuted)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(Brand.card)
+        .cornerRadius(8)
+    }
+
+    // MARK: - Save
+
+    private func save() async {
+        guard !items.isEmpty else { return }
+        isSaving = true
+        errorMessage = nil
+
+        // Build per-item breakdown for the notes field so we don't lose context.
+        let breakdown = items.map { item in
+            "• \(item.foodName) (\(item.servingDescription)) — \(item.calories)c, \(Int(item.protein))p, \(Int(item.carbs))c, \(Int(item.fat))f"
+        }.joined(separator: "\n")
+        let notes = "Multi-item meal (\(items.count) items):\n\(breakdown)"
+
+        let body: [String: Any] = [
+            "meal": mealName.trimmingCharacters(in: .whitespaces),
+            "mealType": mealType,
+            "date": date,
+            "calories": totalCalories,
+            "proteinG": totalProtein,
+            "carbsG": totalCarbs,
+            "fatG": totalFat,
+            "notes": notes
+        ]
+
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: body)
+            let _: SuccessResponse = try await apiService.postRaw("/nutrition", jsonData: jsonData)
+            HapticManager.success()
+            items.removeAll()
+            onSaved()
+            dismiss()
+        } catch {
+            HapticManager.error()
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            isSaving = false
         }
     }
 }

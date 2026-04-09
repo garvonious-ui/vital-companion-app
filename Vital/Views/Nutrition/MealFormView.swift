@@ -14,8 +14,11 @@ struct MealFormView: View {
     var prefillCarbs: String = ""
     var prefillFat: String = ""
 
+    // Optional callback fired after a successful save (before dismiss)
+    var onSaved: (() -> Void)? = nil
+
     @State private var name: String = ""
-    @State private var mealType: String = "lunch"
+    @State private var mealType: String = "Lunch"
     @State private var calories: String = ""
     @State private var protein: String = ""
     @State private var carbs: String = ""
@@ -23,7 +26,8 @@ struct MealFormView: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
 
-    private let mealTypes = ["breakfast", "lunch", "dinner", "snack", "shake", "drink"]
+    // Must match the `nutrition_log_meal_type_check` CHECK constraint in the DB.
+    private let mealTypes = ["Breakfast", "Lunch", "Dinner", "Snack", "Shake", "Drink"]
 
     private var isEditing: Bool { editingMeal != nil }
 
@@ -131,7 +135,9 @@ struct MealFormView: View {
             .onAppear {
                 if let meal = editingMeal {
                     name = meal.name
-                    mealType = (meal.mealType ?? "snack").lowercased()
+                    // Normalize to capitalized to match the DB CHECK constraint and the
+                    // chip array. Tolerates legacy lowercase values from old data.
+                    mealType = (meal.mealType ?? "Snack").capitalized
                     calories = meal.calories.map { String($0) } ?? ""
                     protein = meal.protein.map { String(Int($0)) } ?? ""
                     carbs = meal.carbs.map { String(Int($0)) } ?? ""
@@ -186,24 +192,32 @@ struct MealFormView: View {
         isSaving = true
         errorMessage = nil
 
-        let body = NutritionLogBody(
-            date: date,
-            mealType: mealType,
-            meal: name.trimmingCharacters(in: .whitespaces),
-            calories: Int(calories),
-            proteinG: Double(protein),
-            carbsG: Double(carbs),
-            fatG: Double(fat)
-        )
+        // Build the body as a raw dictionary so the camelCase keys reach the backend
+        // unmodified. APIService's typed `post` would convert these to snake_case, which
+        // the `/nutrition` route silently drops — see comment on NutritionLogBody.
+        var body: [String: Any] = [
+            "meal": name.trimmingCharacters(in: .whitespaces),
+            "mealType": mealType,
+            "date": date
+        ]
+        if let cal = Int(calories) { body["calories"] = cal }
+        if let p = Double(protein) { body["proteinG"] = p }
+        if let c = Double(carbs) { body["carbsG"] = c }
+        if let f = Double(fat) { body["fatG"] = f }
 
         do {
+            let jsonData = try JSONSerialization.data(withJSONObject: body)
             if let meal = editingMeal {
-                // PATCH with id
-                let _: APIResponse<NutritionEntry> = try await apiService.patch("/nutrition?id=\(meal.id)", body: body)
+                // PATCH expects the id in the body for updateNutritionEntry
+                var patchBody = body
+                patchBody["id"] = meal.id
+                let patchData = try JSONSerialization.data(withJSONObject: patchBody)
+                let _: SuccessResponse = try await apiService.patchRaw("/nutrition", jsonData: patchData)
             } else {
-                let _: APIResponse<NutritionEntry> = try await apiService.post("/nutrition", body: body)
+                let _: SuccessResponse = try await apiService.postRaw("/nutrition", jsonData: jsonData)
             }
             HapticManager.success()
+            onSaved?()
             dismiss()
         } catch {
             HapticManager.error()

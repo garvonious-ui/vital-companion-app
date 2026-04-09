@@ -212,6 +212,11 @@ struct NutritionEntry: Codable, Identifiable, Sendable {
     var fat: Double? { fatG }
 }
 
+// NOTE: This struct is kept for compatibility but should not be used with `apiService.post`.
+// The APIService encoder uses `.convertToSnakeCase`, which silently rewrites camelCase fields
+// (mealType, proteinG, etc.) to snake_case — but the `/nutrition` route expects camelCase, so
+// those fields end up null in the DB. Use `apiService.postRaw` with a `[String: Any]` dictionary
+// instead (see MealFormView.save() and MealAnalysisView.saveMeal() for examples).
 struct NutritionLogBody: Codable, Sendable {
     let date: String
     let mealType: String

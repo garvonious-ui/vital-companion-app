@@ -488,7 +488,7 @@ struct NutritionView: View {
             await loadWeeklyCalories()
             isLoading = false
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
             isLoading = false
         }
     }
@@ -530,7 +530,7 @@ struct NutritionView: View {
             HapticManager.medium()
         } catch {
             HapticManager.error()
-            errorMessage = error.localizedDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 
