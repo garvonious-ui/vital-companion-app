@@ -238,6 +238,9 @@
 ### Nutrition Improvements
 - [x] Add drinks as a meal type option (coffee, smoothie, protein shake, etc.)
 - [x] Meal scan results — output fields already editable (name, type, macros are TextFields)
+- [x] Food database search — USDA FoodData Central integration (search, serving picker, auto-fill macros)
+- [x] Food search available from all 3 meal logging entry points (Today, Activity, Nutrition)
+- [ ] Swap to FatSecret Premium if approved (applied, pending)
 
 ### Manual Data Entry
 - [x] Manual sleep logging — tap sleep card when empty → alert to enter hours

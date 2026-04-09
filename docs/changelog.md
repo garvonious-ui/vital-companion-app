@@ -1,5 +1,60 @@
 # Changelog — Vital Companion App
 
+## 2026-04-08 — Session 21
+
+### Food Database Search (USDA FoodData Central)
+- **Backend**: `src/lib/fatsecret.ts` — USDA API client with search + food detail (OAuth token caching)
+- **GET /api/nutrition/search?q=chicken** — proxies USDA foods.search, returns name, brand, macros, serving
+- **GET /api/nutrition/food?id=12345** — proxies USDA food detail with serving options
+- **FoodSearchView.swift** (new) — search bar with 300ms debounce, result list showing macros per serving
+- **Serving picker** — tap result to see serving options (e.g. 100g, 1 breast, 1 oz), quantity multiplier ±0.5, macro preview scales proportionally
+- **"Add to Meal Log"** — pre-fills MealFormView with selected food's name, calories, protein, carbs, fat
+- **MealFormView** — added prefill parameters (prefillName, prefillCalories, prefillProtein, prefillCarbs, prefillFat)
+- **No results fallback** — "Log manually instead" link opens MealFormView with search text as name
+- **Available from all 3 entry points**: Today quick action, Activity log meal, Nutrition "+" button
+- FatSecret initially tried but requires IP whitelisting (incompatible with Vercel), switched to USDA which is free with no restrictions
+- Applied for FatSecret Premium (free tier) — will swap if approved
+
+### Oura Dev Account
+- New Oura application approved with ten-user limit lifted
+- New credentials (Client ID + Secret) deployed to Vercel
+- In-app OAuth flow ready for any Oura user
+
+### Files Created
+- `src/lib/fatsecret.ts` (web dashboard) — USDA FoodData Central client
+- `src/app/api/nutrition/search/route.ts` (web dashboard)
+- `src/app/api/nutrition/food/route.ts` (web dashboard)
+- `Vital/Views/Nutrition/FoodSearchView.swift`
+
+### Files Modified (iOS)
+- `Vital/Views/Nutrition/MealFormView.swift` — prefill parameters + onAppear logic
+- `Vital/Views/Nutrition/NutritionView.swift` — "Search Food Database" in action sheet + sheet
+- `Vital/Views/Today/TodayView.swift` — food search state + action sheet + sheet
+- `Vital/Views/Activity/ActivityView.swift` — food search state + action sheet + sheet
+
+### Bugs Found
+- **FatSecret IP whitelisting** — API rejects requests from Vercel's dynamic IPs (error code 21). No workaround without Premier plan or fixed-IP proxy. Switched to USDA.
+
+### Decisions
+- USDA FoodData Central over FatSecret — free, no IP restrictions, comprehensive (22k+ results for "chicken")
+- Same API response format so iOS code works with either backend
+- FatSecret Premium applied for — easy swap if approved (one file change)
+- Food search added to all meal logging entry points for consistent UX
+
+### TestFlight
+- Build 17 uploaded
+
+### Status
+- Food database search: **Complete and deployed**
+- Oura dev account: **Approved**
+- FatSecret Premium: **Applied, pending**
+
+### What's Next
+1. **App Store screenshots + description**
+2. **Submit to App Store**
+3. **Swap to FatSecret if approved**
+4. **Garmin integration** (if needed)
+
 ## 2026-04-06/07 — Sessions 19-20
 
 ### Manual Sleep Logging
