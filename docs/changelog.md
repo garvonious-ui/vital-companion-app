@@ -100,6 +100,48 @@
 5. **App Store screenshots + description**
 6. **Submit to App Store**
 
+### Post-Wrap Addendum (still Session 22)
+
+After the wrap commit, we kept going and shipped the rest of the queue:
+
+**FatSecret OAuth 2.0 secret rotation**
+- Old secret (`62b9be09...`) was in chat history, rotated to new value (`2bf6f4cc...`)
+- Vercel `FATSECRET_CLIENT_SECRET` updated via CLI, redeployed
+- Verified token endpoint with new creds before redeploying
+
+**Both repos pushed to GitHub**
+- `vital-health-dashboard`: `d590062..99fbc4f` (1 commit)
+- `vital-companion-app`: `377661d..a446034` (3 commits, all with correct author)
+
+**TestFlight build 18 uploaded**
+- Bumped `CURRENT_PROJECT_VERSION` to 18 in `project.yml`
+- `xcodegen generate` + `xcodebuild archive` (Release config)
+- Copied archive into `~/Library/Developer/Xcode/Archives/` so Organizer picks it up
+- Uploaded via Xcode Organizer (App Store Connect API access blocked by Apple permission gate — needs "Request Access" in Users and Access → Integrations, deferred to next session)
+- Build 1.0.0 (18) confirmed uploaded
+
+**Latent bug fixed: Info.plist version templating**
+- `Vital/Info.plist` had `CFBundleShortVersionString` and `CFBundleVersion` hardcoded as literal `"1.0"` and `"1"` instead of using `$(MARKETING_VERSION)` and `$(CURRENT_PROJECT_VERSION)` templates like the other standard keys (`PRODUCT_BUNDLE_IDENTIFIER`, `EXECUTABLE_NAME`, etc.) in the same file
+- Caught this when first attempted archive came out as `1.0 (1)` instead of `1.0.0 (18)` despite the project.yml bump
+- How build 17 ever uploaded is a mystery — best guess is someone manually edited the literal value before each archive and it got reset somewhere along the way
+- Fixed by switching both keys to template variables. Future bumps in `project.yml` now propagate automatically
+
+**Post-wrap commits**
+- `f4e2b1c` — TestFlight build 18 + fix Info.plist version templating (pushed)
+
+### Final Status (end of Session 22)
+- **TestFlight build 18**: uploaded, processing in App Store Connect
+- **All planned work shipped**
+- **Both repos clean and pushed** (origin/main matches local main)
+
+### What's Next (real, for next session)
+1. **Test build 18 on device** once App Store Connect finishes processing
+2. **Apple's "Request Access" for App Store Connect API** — click the button so future TestFlight uploads can be fully scriptable from CLI (5-minute setup)
+3. **Audit `QuickLogView` + `WorkoutDetailView`** for the same `apiService.post(_:body:)` snake_case bug that bit `MealFormView`
+4. **App Store screenshots + description**
+5. **Test onboarding with a fresh account**
+6. **Submit to App Store**
+
 ## 2026-04-08 — Session 21
 
 ### Food Database Search (USDA FoodData Central)

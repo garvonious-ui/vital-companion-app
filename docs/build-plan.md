@@ -252,6 +252,17 @@
 - [x] FoodSearchView didn't dismiss after save — added `onSaved` callback to MealFormView, bubbled up through FoodSearchView to parent.
 - [x] Backend `/api/nutrition` error handler returned "[object Object]" for Supabase errors — extract `.message` from Error objects.
 - [x] APIError serverError shown as "error 8" — NutritionView now reads `errorDescription` directly, serverError includes body snippet.
+- [x] **Info.plist version templating** — `CFBundleShortVersionString` and `CFBundleVersion` were hardcoded literals instead of `$(MARKETING_VERSION)` / `$(CURRENT_PROJECT_VERSION)` templates. Caused build 18 archive to come out as `1.0 (1)`. Fixed both to use templates so future bumps propagate.
+
+### Session 22 Shipping
+- [x] FatSecret OAuth 2.0 secret rotated (Vercel + redeploy)
+- [x] Both repos pushed to GitHub (vital-health-dashboard + vital-companion-app)
+- [x] **TestFlight build 18 uploaded** via Xcode Organizer (multi-item meals, all bug fixes)
+
+### Pending from Session 22 (carry to next session)
+- [ ] Test build 18 on device after App Store Connect processing finishes
+- [ ] Click Apple's "Request Access" for App Store Connect API (Users and Access → Integrations) so future uploads can be scriptable
+- [ ] Audit `QuickLogView` + `WorkoutDetailView` for the same `apiService.post(_:body:)` snake_case bug
 
 ### Manual Data Entry
 - [x] Manual sleep logging — tap sleep card when empty → alert to enter hours
