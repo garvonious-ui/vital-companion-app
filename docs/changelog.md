@@ -1,5 +1,105 @@
 # Changelog — Vital Companion App
 
+## 2026-04-09 — Session 22
+
+### FatSecret Premier Free Swap (USDA → FatSecret)
+- **FatSecret Premier Free approved** — barcode scanning, autocomplete search, food categories, US data set
+- **`src/lib/fatsecret.ts` rewritten** — real FatSecret OAuth 2.0 client (was a USDA client misnamed)
+  - `client_credentials` grant against `https://oauth.fatsecret.com/connect/token`
+  - Per-instance access token cache with 60s expiry buffer
+  - `foods.search` + `food.get.v4` against `https://platform.fatsecret.com/rest/server.api`
+  - Pre-formatted FatSecret `food_description` parsed for numeric macros (regex)
+  - Same exported interfaces (`FoodSearchResult`, `FoodDetail`, `FoodServing`) so iOS + routes need zero changes
+- **IP whitelist** — added `0.0.0.0/0` and `::/0` in the OAuth 2.0 portal section (separate whitelist from OAuth 1.0)
+- **Vercel env vars** — `FATSECRET_CLIENT_ID` + `FATSECRET_CLIENT_SECRET` rotated to OAuth 2.0 values, deployed via CLI
+- **Live test verified** — real Chipotle/Kirkland brand matches returned, food detail with serving options works
+
+### Multi-Item Meal Cart
+- **`MealCartItem` struct** — staged item with already-scaled macros + serving description
+- **FoodSearchView cart state** — `@State var mealCart: [MealCartItem]`
+- **"Add to Meal" button** in serving picker (was "Add to Meal Log") — appends to cart, returns to results to add more, label updates to "Add Another (N so far)"
+- **Sticky cart bar** at bottom via `safeAreaInset` — count + total cal + total protein + Review arrow, only visible when cart non-empty
+- **Cancel guard** — confirmation dialog if user dismisses with items in cart
+- **`MealReviewView`** (new) — full review/save sheet:
+  - Meal type chips (defaults to Lunch, capitalized)
+  - Editable meal name (auto-composed: "Brand: A, B, C" if all items share a brand, else "A, B, C", with "+ N more" if >3 items)
+  - Item list with delete buttons (per-row)
+  - Summed totals (cal/protein/carbs/fat)
+  - "Save Meal" button → POSTs one row with composed name + summed macros + per-item breakdown stored in `notes` field
+
+### Three Layered Nutrition Save Bugs (chain)
+1. **Encoder snake_case mismatch** — `APIService` uses `.convertToSnakeCase`, but `/api/nutrition` reads camelCase. So `mealType`/`proteinG`/`carbsG`/`fatG` were silently dropped → DB rows had NULL for those fields → "No meals logged" empty state. **Fix**: `MealFormView.save()` now uses `postRaw` with raw `[String: Any]` dict, matching the pattern already used by `MealAnalysisView` and most of the codebase. Old broken `NutritionLogBody` struct kept with a warning comment.
+2. **Meal type case mismatch** (hidden by bug #1) — DB CHECK constraint requires capitalized values (`'Breakfast'`, `'Lunch'`, ...). iOS sent lowercase `"lunch"`. With bug #1 fixed, the constraint started rejecting inserts. **Fix**: capitalized `mealTypes` array + default in `MealFormView`, edit-path normalizes via `.capitalized` for legacy data. Also: `Drink` was missing from the constraint entirely — applied migration `add_drink_to_meal_type_check`.
+3. **APIError display bug** — `error.localizedDescription` showed `"error 8"` instead of the real serverError message. **Fix**: `NutritionView` now reads `(error as? APIError)?.errorDescription` directly to bypass NSError bridging. Also: `serverError` errorDescription now includes a 120-char body snippet so future failures actually tell us what went wrong.
+
+### UX Fixes (FoodSearchView)
+- **Stale prefill on first open** — `.sheet(isPresented:)` was reading `@State` prefill values captured in the closure before they updated. Switched to `.sheet(item: $mealPrefill)` with `MealPrefill: Identifiable` struct so the closure receives fresh values atomically.
+- **Stale food detail when typing new search** — `selectedFood`/`selectedServing` now cleared in `onChange(of: searchText)`.
+- **FoodSearchView didn't auto-close after save** — added optional `onSaved: (() -> Void)?` callback to `MealFormView`, fired on save success before dismiss; FoodSearchView wires it to bubble up through `self.onSaved?()` and dismiss itself.
+
+### Backend Error Handler Fix
+- **`/api/nutrition` route** — `String(error)` on a Supabase PostgrestError stringified to `"[object Object]"`, masking the real constraint violation. Now extracts `.message` from Error-shaped objects. This is what surfaced the meal_type case mismatch — without this fix we'd still be guessing.
+
+### Changelog Maintenance
+- **Archived sessions 6-16** to `changelog-archive.md` — main changelog was 60.7k chars, exceeding Claude Code's 40k auto-load threshold. Now back under limit.
+
+### Git Author Fix
+- iOS repo had no `user.email` per-repo config → commits were authored by `loucesario@MacBook-Air-8.local` (auto-generated hostname). Set per-repo config to `lou.cesario92@gmail.com` and amended the two unpushed commits via `git rebase HEAD~2 --exec "git commit --amend --reset-author --no-edit"`.
+
+### Files Created
+- (none — extended existing files)
+
+### Files Modified (iOS)
+- `Vital/Views/Nutrition/FoodSearchView.swift` — `MealCartItem`, `MealPrefill`, cart state, sticky cart bar, `addCurrentFoodToCart`, `MealReviewView`, sheet-item fix, stale-detail fix
+- `Vital/Views/Nutrition/MealFormView.swift` — `postRaw` save, `onSaved` callback, capitalized mealTypes + default + edit normalization, PATCH path uses id-in-body
+- `Vital/Views/Nutrition/NutritionView.swift` — APIError-aware error display
+- `Vital/Models/AppModels.swift` — comment on `NutritionLogBody` warning future devs not to use it
+- `Vital/Services/APIService.swift` — verbose `serverError` description with body snippet
+- `docs/changelog.md` — archive split + this entry
+- `docs/changelog-archive.md` — full sessions 6-16 added
+- `docs/build-plan.md` — Session 22 checkboxes
+
+### Files Modified (Web Dashboard)
+- `src/lib/fatsecret.ts` — full rewrite as real FatSecret OAuth 2.0 client (was USDA in disguise)
+- `src/app/api/nutrition/route.ts` — error handler extracts `.message` from Error objects
+
+### Database Migrations
+- `add_drink_to_meal_type_check` — extends `nutrition_log_meal_type_check` to allow `'Drink'`
+
+### Backend Deployments
+- FatSecret OAuth 2.0 client + nutrition error handler force-deployed via `vercel --prod`
+- Vercel env vars updated via CLI: `FATSECRET_CLIENT_ID`, `FATSECRET_CLIENT_SECRET` (rotated to OAuth 2.0 values)
+
+### Bugs Found
+- **CodingKeys + `.convertToSnakeCase` myth** — explicit `CodingKeys` raw values do NOT bypass JSONEncoder's `keyEncodingStrategy`. Verified empirically when first attempted fix didn't work. Only way to encode camelCase with that encoder is to use a different encoder (or `JSONSerialization` via `postRaw`).
+- **Long-standing manual meal log rows have null `meal_type`** — every manual meal logged via `MealFormView` since Session 9 has had nulls because of the encoder bug. Meal scans (via `MealAnalysisView`) worked fine because they always used `postRaw`.
+- **`QuickLogView` and `WorkoutDetailView` likely affected too** — they're the only other places still using `apiService.post(_:body:)`. Not investigated this session, but worth a follow-up audit.
+- **Long bash commands wrap in Claude Code prompt input** — when guiding the user through `git config` commands, paths over ~80 chars wrap, breaking the command. Workaround: drop `cd` and rely on cwd, or use shorter commands.
+
+### Decisions
+- **Single-row schema for multi-item meals** (not a child `nutrition_items` table) — ships in one session vs ~4 hours, preserves per-item breakdown in `notes` field for context. Can migrate to a proper child table later if needed.
+- **`MealReviewView` lives in same file as `FoodSearchView`** — tightly coupled, no reuse elsewhere, keeps file count down.
+- **Default review meal name auto-composed** — smart brand-aware compose ("Chipotle: Chicken, Rice"). User can edit before save.
+- **Cart Cancel guard** — confirmation dialog only if cart non-empty.
+- **OAuth 2.0 over OAuth 1.0** — same Consumer Key/Secret work for both on FatSecret's portal, but OAuth 2.0 is way simpler (no HMAC-SHA1 request signing). User had to enable OAuth 2.0 separately + reset its Client Secret since OAuth 2.0 has its own (separate from OAuth 1.0) secret + IP whitelist.
+- **Don't push yet** — local commits sit on `main`, will push after Session 22 wrap is committed and FatSecret secret is rotated.
+
+### Status
+- FatSecret Premier Free: **Complete and deployed**
+- Multi-item meal cart: **Complete, tested on device**
+- Nutrition save bugs: **All three fixed and tested**
+- Backend error handler: **Improved**
+- DB migration: **Applied to prod**
+- Git history: **Author fixed for iOS repo**
+
+### What's Next
+1. **Rotate FatSecret OAuth 2.0 Client Secret** — Lou pasted current secret in chat; rotate before push for safety
+2. **Push both repos to GitHub** — `vital-health-dashboard` (1 commit ahead) + `vital-companion-app` (3 commits ahead, all with correct author)
+3. **TestFlight build 18** — bump build number, archive in Xcode, upload (multi-item meals + bug fixes worth shipping to testers)
+4. **Audit `QuickLogView` and `WorkoutDetailView`** for the same encoder bug
+5. **App Store screenshots + description**
+6. **Submit to App Store**
+
 ## 2026-04-08 — Session 21
 
 ### Food Database Search (USDA FoodData Central)

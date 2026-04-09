@@ -240,7 +240,18 @@
 - [x] Meal scan results — output fields already editable (name, type, macros are TextFields)
 - [x] Food database search — USDA FoodData Central integration (search, serving picker, auto-fill macros)
 - [x] Food search available from all 3 meal logging entry points (Today, Activity, Nutrition)
-- [ ] Swap to FatSecret Premium if approved (applied, pending)
+- [x] Swap to FatSecret Premier Free — approved, deployed via OAuth 2.0 (Session 22)
+- [x] Multi-item meal cart — stage multiple foods, review + save as one meal (Session 22)
+- [x] DB constraint migration — added 'Drink' to nutrition_log_meal_type_check (Session 22)
+
+### Session 22 Bug Fixes
+- [x] Nutrition save dropped fields — APIService encoder converted camelCase to snake_case but `/api/nutrition` reads camelCase. Switched MealFormView to postRaw with raw dict (matches rest of codebase pattern).
+- [x] Meal type case mismatch — DB CHECK constraint requires capitalized values; iOS sent lowercase. Capitalized mealTypes array + default + edit-path normalization.
+- [x] Stale prefill on first "Add to Meal Log" tap — switched to `.sheet(item:)` with `MealPrefill` Identifiable struct.
+- [x] Stale food detail when typing new search — clear `selectedFood`/`selectedServing` on `searchText` change.
+- [x] FoodSearchView didn't dismiss after save — added `onSaved` callback to MealFormView, bubbled up through FoodSearchView to parent.
+- [x] Backend `/api/nutrition` error handler returned "[object Object]" for Supabase errors — extract `.message` from Error objects.
+- [x] APIError serverError shown as "error 8" — NutritionView now reads `errorDescription` directly, serverError includes body snippet.
 
 ### Manual Data Entry
 - [x] Manual sleep logging — tap sleep card when empty → alert to enter hours
