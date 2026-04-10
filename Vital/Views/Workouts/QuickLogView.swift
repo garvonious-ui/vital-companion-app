@@ -4,7 +4,7 @@ struct QuickLogView: View {
     @Environment(APIService.self) var apiService
     @Environment(\.dismiss) var dismiss
 
-    @State private var type: String = "strength"
+    @State private var type: String = "Strength"
     @State private var name: String = ""
     @State private var duration: String = ""
     @State private var calories: String = ""
@@ -12,15 +12,24 @@ struct QuickLogView: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
 
-    private let workoutTypes = [
-        ("strength", "dumbbell.fill"),
-        ("running", "figure.run"),
-        ("cycling", "bicycle"),
-        ("swimming", "figure.pool.swim"),
-        ("hiit", "bolt.heart.fill"),
-        ("yoga", "figure.yoga"),
-        ("walking", "figure.walk"),
-        ("other", "figure.mixed.cardio"),
+    /// A workout type shown in the picker. The `id` doubles as the canonical
+    /// DB value — `workouts_type_check` in Postgres accepts this exact set
+    /// {HIIT, Strength, Cardio, Running, Cycling, Swimming, Flexibility, Yoga,
+    /// Walking, Other}. Expanded in Session 23 migration `expand_workout_types`.
+    private struct WorkoutTypeOption: Identifiable {
+        let id: String
+        let icon: String
+    }
+
+    private let workoutTypes: [WorkoutTypeOption] = [
+        .init(id: "Strength", icon: "dumbbell.fill"),
+        .init(id: "Running", icon: "figure.run"),
+        .init(id: "Cycling", icon: "bicycle"),
+        .init(id: "Swimming", icon: "figure.pool.swim"),
+        .init(id: "HIIT", icon: "bolt.heart.fill"),
+        .init(id: "Yoga", icon: "figure.yoga"),
+        .init(id: "Walking", icon: "figure.walk"),
+        .init(id: "Other", icon: "figure.mixed.cardio"),
     ]
 
     private var isValid: Bool {
@@ -41,8 +50,8 @@ struct QuickLogView: View {
                                 .foregroundColor(Brand.textSecondary)
 
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
-                                ForEach(workoutTypes, id: \.0) { wType, icon in
-                                    typeButton(wType, icon: icon)
+                                ForEach(workoutTypes) { option in
+                                    typeButton(option)
                                 }
                             }
                         }
@@ -118,15 +127,15 @@ struct QuickLogView: View {
         }
     }
 
-    private func typeButton(_ wType: String, icon: String) -> some View {
-        let isSelected = type == wType
+    private func typeButton(_ option: WorkoutTypeOption) -> some View {
+        let isSelected = type == option.id
         return Button {
-            type = wType
+            type = option.id
         } label: {
             VStack(spacing: 6) {
-                Image(systemName: icon)
+                Image(systemName: option.icon)
                     .font(.body)
-                Text(wType.capitalized)
+                Text(option.id)
                     .font(.caption2)
                     .lineLimit(1)
             }
@@ -167,11 +176,10 @@ struct QuickLogView: View {
         // `.convertToSnakeCase`, and the `/workouts` route reads camelCase —
         // plus our field names here intentionally don't match the Swift struct
         // names we'd want (backend expects `workoutName`/`durationMin`/
-        // `activeCalories`, not `name`/`duration`/`calories`). This was silently
-        // failing with a NOT NULL violation on `workout_name` on every call.
+        // `activeCalories`, not `name`/`duration`/`calories`).
         var body: [String: Any] = [
             "type": type,
-            "workoutName": name.isEmpty ? type.capitalized : name.trimmingCharacters(in: .whitespaces),
+            "workoutName": name.isEmpty ? type : name.trimmingCharacters(in: .whitespaces),
             "date": today,
             "notes": notes.trimmingCharacters(in: .whitespaces),
         ]

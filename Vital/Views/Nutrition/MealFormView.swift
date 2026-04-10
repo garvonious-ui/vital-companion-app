@@ -17,6 +17,13 @@ struct MealFormView: View {
     // Optional callback fired after a successful save (before dismiss)
     var onSaved: (() -> Void)? = nil
 
+    // Optional callback fired when the user confirms delete in edit mode.
+    // The parent is responsible for calling the DELETE API and removing the
+    // meal from its local state.
+    var onDeleted: (() -> Void)? = nil
+
+    @State private var showDeleteConfirm = false
+
     @State private var name: String = ""
     @State private var mealType: String = "Lunch"
     @State private var calories: String = ""
@@ -119,6 +126,23 @@ struct MealFormView: View {
                         }
                         .disabled(!isValid || isSaving)
 
+                        // Delete button (edit mode only)
+                        if isEditing && onDeleted != nil {
+                            Button(role: .destructive) {
+                                showDeleteConfirm = true
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "trash")
+                                    Text("Delete Meal")
+                                }
+                                .font(.subheadline.weight(.medium))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .foregroundColor(Brand.critical)
+                            }
+                            .padding(.top, 4)
+                        }
+
                         Spacer()
                     }
                     .padding(20)
@@ -131,6 +155,19 @@ struct MealFormView: View {
                     Button("Cancel") { dismiss() }
                         .foregroundColor(Brand.textSecondary)
                 }
+            }
+            .confirmationDialog(
+                "Delete this meal?",
+                isPresented: $showDeleteConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    onDeleted?()
+                    dismiss()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This can't be undone.")
             }
             .onAppear {
                 if let meal = editingMeal {

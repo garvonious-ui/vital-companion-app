@@ -11,11 +11,14 @@ struct NutritionView: View {
     @State private var weeklyCalories: [DailyMetricSlim] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
-    @State private var showMealForm = false
     @State private var showMealScan = false
     @State private var showFoodSearch = false
     @State private var showAddOptions = false
-    @State private var editingMeal: NutritionEntry?
+    // Unified create/edit presentation for the meal form. Using .sheet(item:)
+    // with this enum means the content closure receives fresh values
+    // atomically, fixing the Session 22-style stale prefill bug where the
+    // first tap on a meal row showed empty fields.
+    @State private var mealForm: MealFormPresentation?
 
     private let mealOrder = ["breakfast", "lunch", "dinner", "snack", "shake", "drink"]
 
@@ -91,7 +94,6 @@ struct NutritionView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        editingMeal = nil
                         showAddOptions = true
                     } label: {
                         Image(systemName: "plus")
@@ -102,16 +104,20 @@ struct NutritionView: View {
             .confirmationDialog("Log Meal", isPresented: $showAddOptions) {
                 Button("🔍 Search Food Database") { showFoodSearch = true }
                 Button("📸 Scan Meal Photo") { showMealScan = true }
-                Button("✏️ Log Manually") { showMealForm = true }
+                Button("✏️ Log Manually") { mealForm = .create }
                 Button("Cancel", role: .cancel) {}
             }
-            .sheet(isPresented: $showMealForm, onDismiss: {
+            .sheet(item: $mealForm, onDismiss: {
                 Task { await loadData() }
-            }) {
-                MealFormView(
-                    date: dateString,
-                    editingMeal: editingMeal
-                )
+            }) { presentation in
+                switch presentation {
+                case .create:
+                    MealFormView(date: dateString, editingMeal: nil)
+                case .edit(let meal):
+                    MealFormView(date: dateString, editingMeal: meal, onDeleted: {
+                        Task { await deleteMeal(meal) }
+                    })
+                }
             }
             .sheet(isPresented: $showMealScan, onDismiss: {
                 Task { await loadData() }
@@ -308,8 +314,7 @@ struct NutritionView: View {
                         .font(.subheadline)
                         .foregroundColor(Brand.textMuted)
                     Button {
-                        editingMeal = nil
-                        showMealForm = true
+                        mealForm = .create
                     } label: {
                         Text("Log a Meal")
                             .font(.subheadline.weight(.semibold))
@@ -415,8 +420,7 @@ struct NutritionView: View {
         .padding(.vertical, 8)
         .contentShape(Rectangle())
         .onTapGesture {
-            editingMeal = meal
-            showMealForm = true
+            mealForm = .edit(meal)
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
@@ -545,6 +549,25 @@ struct NutritionView: View {
         let f = DateFormatter()
         f.dateFormat = "EEE"
         return f.string(from: date)
+    }
+}
+
+// MARK: - Meal Form Presentation
+
+/// Distinguishes "create a new meal" from "edit an existing meal" for
+/// `.sheet(item:)` presentation. `.sheet(item:)` re-evaluates its content
+/// closure whenever `id` changes, so the closure always receives a fresh,
+/// atomic value — unlike `.sheet(isPresented:)` which captures a separate
+/// `@State` value that may not be updated yet on the first tap.
+enum MealFormPresentation: Identifiable {
+    case create
+    case edit(NutritionEntry)
+
+    var id: String {
+        switch self {
+        case .create: return "__create__"
+        case .edit(let meal): return meal.id
+        }
     }
 }
 

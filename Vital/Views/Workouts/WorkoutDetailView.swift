@@ -493,14 +493,13 @@ struct AddExerciseView: View {
             let jsonData = try JSONSerialization.data(withJSONObject: body)
             let _: SuccessResponse = try await apiService.postRaw("/exercises", jsonData: jsonData)
             HapticManager.success()
-            // Reset for adding another
-            exerciseName = ""
-            searchText = ""
-            muscleGroup = ""
-            sets = ""
-            reps = ""
-            weight = ""
             isSaving = false
+            // Dismiss so the parent's onDismiss handler reloads the exercise
+            // list. User wasn't seeing saved exercises before because the form
+            // just reset and they had no feedback the save worked. If they
+            // want to add another, they tap + again — one extra tap, but a
+            // clear mental model of "save → see the result".
+            dismiss()
         } catch {
             HapticManager.error()
             errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
