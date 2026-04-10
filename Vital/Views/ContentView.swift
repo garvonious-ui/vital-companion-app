@@ -8,39 +8,42 @@ struct ContentView: View {
     @State private var hasProfile = true // assume true until checked
     @State private var profileChecked = false
     @State private var onboardingComplete = false
-    @State private var deviceType: DeviceType?
+    // Seeded from UserDefaults synchronously at view-creation time so existing
+    // users never render with `deviceType == nil` during the brief window
+    // between `isSignedIn` flipping true and the `onChange` handler running.
+    // That window used to cause `contentLayer` to evaluate to DeviceSelectionView
+    // and flicker through while the splash was fading out.
+    @State private var deviceType: DeviceType? = {
+        if let saved = UserDefaults.standard.string(forKey: "selectedDeviceType"),
+           let type = DeviceType(rawValue: saved) {
+            return type
+        }
+        return nil
+    }()
 
     private let deviceTypeKey = "selectedDeviceType"
 
+    /// True whenever we're in a "pre-MainTabView" async state where the user
+    /// should see the splash: either auth is still resolving, or auth finished
+    /// and we're waiting on the one-shot profile-check round trip.
+    private var showSplash: Bool {
+        authService.isLoading
+            || (authService.isSignedIn && deviceType != nil && !profileChecked)
+    }
+
     var body: some View {
-        Group {
-            if authService.isLoading {
-                ZStack {
-                    Brand.bg.ignoresSafeArea()
-                    ProgressView()
-                        .tint(.white)
-                }
-            } else if !authService.isSignedIn {
-                LoginView()
-            } else if deviceType == nil {
-                DeviceSelectionView { selected in
-                    deviceType = selected
-                    UserDefaults.standard.set(selected.rawValue, forKey: deviceTypeKey)
-                    // If Apple Watch was selected, HealthKit is now authorized
-                    // For other types, skip HealthKit gate
-                }
-            } else if !profileChecked {
-                ZStack {
-                    Brand.bg.ignoresSafeArea()
-                    ProgressView().tint(.white)
-                }
-                .task { await checkProfile() }
-            } else if !hasProfile && !onboardingComplete {
-                OnboardingView(isComplete: $onboardingComplete)
-            } else {
-                MainTabView()
+        ZStack {
+            // Real content always renders underneath. While `showSplash` is
+            // true the splash covers it; when splash fades out the content is
+            // already fully mounted so the handoff is seamless.
+            contentLayer
+
+            if showSplash {
+                SplashView()
+                    .transition(.opacity)
             }
         }
+        .animation(.easeOut(duration: 0.35), value: showSplash)
         .onChange(of: authService.isSignedIn) { _, signedIn in
             if signedIn {
                 profileChecked = false
@@ -68,6 +71,32 @@ struct ContentView: View {
                     UserDefaults.standard.set(DeviceType.appleWatch.rawValue, forKey: deviceTypeKey)
                 }
             }
+        }
+    }
+
+    /// The actual screen behind the splash. Switches based on auth / device /
+    /// profile state. The splash overlay handles visibility during the async
+    /// startup chain — this layer is free to switch cleanly underneath.
+    @ViewBuilder
+    private var contentLayer: some View {
+        if !authService.isSignedIn {
+            LoginView()
+        } else if deviceType == nil {
+            DeviceSelectionView { selected in
+                deviceType = selected
+                UserDefaults.standard.set(selected.rawValue, forKey: deviceTypeKey)
+            }
+        } else if !profileChecked {
+            // Invisible placeholder — splash is overlaid on top. The `.task`
+            // fires once when this branch appears to kick off the profile
+            // round trip. Using `Color.clear` here keeps the task wired to the
+            // branch's lifecycle without mounting any competing UI.
+            Color.clear
+                .task { await checkProfile() }
+        } else if !hasProfile && !onboardingComplete {
+            OnboardingView(isComplete: $onboardingComplete)
+        } else {
+            MainTabView()
         }
     }
 

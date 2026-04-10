@@ -38,6 +38,7 @@
 		83DB21F40AB3650F585440CA /* NutritionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 718093F3217EB8C9E568058A /* NutritionView.swift */; };
 		8718F9EF3ED0F35F45C2327C /* DeviceSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82534F92A1788707CFF5DCBD /* DeviceSelectionView.swift */; };
 		87CE45C7EC90057B7404D6C5 /* BrandColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECE28BE8DF3FB055E2BFD99E /* BrandColors.swift */; };
+		8F9395400ADB318B7899F7F5 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 490C4E362E188B5AB6CDFA93 /* SplashView.swift */; };
 		929ACBD19E455D8624BC7A68 /* SupplementFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 007156F6AEE52F5471FAC5B5 /* SupplementFormView.swift */; };
 		992C271EAF05E18D631CC48C /* SleepDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B2E36B5835F23D569F5FAC2 /* SleepDetailView.swift */; };
 		9EE3B3B10026C48C894C1E2E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EC860DBCA8D5861DA867F953 /* Assets.xcassets */; };
@@ -80,6 +81,7 @@
 		3AFC49CCDA59865BC4C7D70B /* SupplementScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplementScanView.swift; sourceTree = "<group>"; };
 		419049B12A08DD535DF23CBC /* SyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncService.swift; sourceTree = "<group>"; };
 		41DD527E05343DD9C7E0D7B9 /* AppModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModels.swift; sourceTree = "<group>"; };
+		490C4E362E188B5AB6CDFA93 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
 		4A83C6F4F89F3B1447EE6310 /* LabsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabsView.swift; sourceTree = "<group>"; };
 		4D4225B85291BA2AA157CA81 /* SparklineChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparklineChart.swift; sourceTree = "<group>"; };
 		501DF9AE721A2A5A26C9F350 /* Vital.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Vital.entitlements; sourceTree = "<group>"; };
@@ -237,6 +239,7 @@
 				6E0101990B2443858036D833 /* OnboardingView.swift */,
 				A9B3EDAE295BB5003567B7CF /* PermissionsView.swift */,
 				2D62018416CAAA49C7E9D937 /* SettingsView.swift */,
+				490C4E362E188B5AB6CDFA93 /* SplashView.swift */,
 				EB14AFD38B7C66C7EC36CFF4 /* SyncStatusView.swift */,
 				54B1882EC8007F5F97CD23C1 /* Activity */,
 				340F53374797844606805866 /* Components */,
@@ -416,6 +419,7 @@
 				AC54A7C96E16C3755B82EB2E /* SkeletonView.swift in Sources */,
 				992C271EAF05E18D631CC48C /* SleepDetailView.swift in Sources */,
 				63D97D74849E03C0F076194D /* SparklineChart.swift in Sources */,
+				8F9395400ADB318B7899F7F5 /* SplashView.swift in Sources */,
 				929ACBD19E455D8624BC7A68 /* SupplementFormView.swift in Sources */,
 				FF3BFF2F40540103C12152AA /* SupplementScanView.swift in Sources */,
 				A91E6512E1FBC897AF0E8636 /* SupplementsView.swift in Sources */,
