@@ -5,10 +5,16 @@ struct WorkoutDetailView: View {
     @Environment(\.dismiss) var dismiss
 
     let workout: Workout
+    /// Optional callback fired after a successful delete (before dismiss).
+    /// Parent views use this to remove the workout from their list without
+    /// a full reload.
+    var onDeleted: ((String) -> Void)? = nil
 
     @State private var exercises: [ExerciseLogEntry] = []
     @State private var isLoadingExercises = true
     @State private var showAddExercise = false
+    @State private var showDeleteConfirm = false
+    @State private var isDeleting = false
 
     private var workoutDate: String {
         String(workout.date.prefix(10))
@@ -39,6 +45,28 @@ struct WorkoutDetailView: View {
                         if let notes = workout.notes, !notes.isEmpty {
                             notesCard(notes)
                         }
+
+                        // Delete workout button — destructive, at the bottom
+                        // so the user has to scroll past the content to reach
+                        // it. Confirmation dialog prevents accidental taps.
+                        Button(role: .destructive) {
+                            showDeleteConfirm = true
+                        } label: {
+                            HStack(spacing: 6) {
+                                if isDeleting {
+                                    ProgressView().tint(Brand.critical).scaleEffect(0.8)
+                                } else {
+                                    Image(systemName: "trash")
+                                }
+                                Text("Delete Workout")
+                            }
+                            .font(.subheadline.weight(.medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .foregroundColor(Brand.critical)
+                        }
+                        .disabled(isDeleting)
+                        .padding(.top, 16)
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
@@ -58,9 +86,42 @@ struct WorkoutDetailView: View {
             }) {
                 AddExerciseView(workoutDate: workoutDate)
             }
+            .confirmationDialog(
+                "Delete this workout?",
+                isPresented: $showDeleteConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    Task { await deleteWorkout() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This can't be undone. Exercises logged on the same date are kept.")
+            }
             .task {
                 await loadExercises()
             }
+        }
+    }
+
+    // MARK: - Delete
+
+    private func deleteWorkout() async {
+        isDeleting = true
+        do {
+            let _: SuccessResponse = try await apiService.delete(
+                "/workouts",
+                queryItems: [URLQueryItem(name: "id", value: workout.id)]
+            )
+            HapticManager.success()
+            onDeleted?(workout.id)
+            dismiss()
+        } catch {
+            HapticManager.error()
+            isDeleting = false
+            // No error UI here — we could add one, but the delete either
+            // succeeds or the user retries. Keeping surface area small.
+            print("[WorkoutDetailView] delete failed: \(error)")
         }
     }
 

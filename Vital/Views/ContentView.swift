@@ -122,11 +122,13 @@ struct MainTabView: View {
     @Environment(RefreshCoordinator.self) var refreshCoordinator
 
     @Environment(\.scenePhase) private var scenePhase
-    @State private var selectedTab = 0
     @State private var hasLaunched = false
     @State private var lastForegroundRefresh: Date = .distantPast
 
     var body: some View {
+        // Bind to the coordinator's selectedTab so other views (e.g. TodayView
+        // after a successful meal save) can programmatically switch tabs.
+        @Bindable var coordinator = refreshCoordinator
         VStack(spacing: 0) {
             // Offline banner
             if !networkMonitor.isConnected {
@@ -144,7 +146,7 @@ struct MainTabView: View {
                 .animation(.easeInOut(duration: 0.3), value: networkMonitor.isConnected)
             }
 
-        TabView(selection: $selectedTab) {
+        TabView(selection: $coordinator.selectedTab) {
             TodayView()
                 .tabItem {
                     Image(systemName: "clock.fill")
@@ -167,7 +169,7 @@ struct MainTabView: View {
                 .tag(2)
         }
         .tint(Brand.accent)
-        .onChange(of: selectedTab) { _, _ in
+        .onChange(of: coordinator.selectedTab) { _, _ in
             HapticManager.light()
         }
         .onAppear {

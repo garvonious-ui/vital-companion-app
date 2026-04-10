@@ -32,6 +32,7 @@ struct MealFormView: View {
     @State private var fat: String = ""
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @State private var showFoodSearch = false
 
     // Must match the `nutrition_log_meal_type_check` CHECK constraint in the DB.
     private let mealTypes = ["Breakfast", "Lunch", "Dinner", "Snack", "Shake", "Drink"]
@@ -62,6 +63,33 @@ struct MealFormView: View {
                                     }
                                 }
                             }
+                        }
+
+                        // Food database entry point — prominently placed so
+                        // users always know the database is available, even
+                        // when editing. Overwrites name + macros when a food
+                        // is selected; meal type is preserved.
+                        Button {
+                            showFoodSearch = true
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.subheadline.weight(.semibold))
+                                Text("Search")
+                                    .font(.subheadline.weight(.semibold))
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.bold))
+                            }
+                            .foregroundColor(Brand.accent)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(Brand.accent.opacity(0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Brand.accent.opacity(0.3), lineWidth: 1)
+                            )
+                            .cornerRadius(10)
                         }
 
                         // Name field
@@ -155,6 +183,32 @@ struct MealFormView: View {
                     Button("Cancel") { dismiss() }
                         .foregroundColor(Brand.textSecondary)
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    // Food database search — available in both add and edit
+                    // modes so users can always swap in or replace with a
+                    // verified database entry instead of typing macros by hand.
+                    Button {
+                        showFoodSearch = true
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(Brand.accent)
+                    }
+                }
+            }
+            .sheet(isPresented: $showFoodSearch) {
+                FoodSearchView(
+                    date: date,
+                    onSaved: nil,
+                    onFoodSelected: { selection in
+                        // Apply the selected food's macros to the form state.
+                        // User still has to tap Save/Update to persist.
+                        name = selection.foodName
+                        calories = "\(selection.calories)"
+                        protein = String(format: "%.0f", selection.protein)
+                        carbs = String(format: "%.0f", selection.carbs)
+                        fat = String(format: "%.0f", selection.fat)
+                    }
+                )
             }
             .confirmationDialog(
                 "Delete this meal?",

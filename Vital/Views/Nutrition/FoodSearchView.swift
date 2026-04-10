@@ -48,6 +48,20 @@ struct MealPrefill: Identifiable {
     let fat: String
 }
 
+/// Payload returned by `FoodSearchView` in selection-only mode — used when
+/// the search sheet is presented from the meal edit flow to swap the
+/// underlying food for a database entry. Macros are already scaled by the
+/// chosen serving and quantity multiplier, so the caller can apply them
+/// directly to its form state.
+struct MealSelection: Sendable {
+    let foodName: String
+    let brandName: String?
+    let calories: Int
+    let protein: Double
+    let carbs: Double
+    let fat: Double
+}
+
 /// One staged item in the multi-item meal cart. Macros are already
 /// scaled by serving size and quantity multiplier.
 struct MealCartItem: Identifiable, Sendable {
@@ -67,6 +81,19 @@ struct FoodSearchView: View {
 
     let date: String
     let onSaved: (() -> Void)?
+
+    /// When non-nil, the view runs in "selection-only" mode: the multi-item
+    /// cart UI is hidden, the "Log manually instead" fallback is hidden, and
+    /// the "Add to Meal" button becomes "Use This Food" — tapping it fires
+    /// the callback with the scaled macros and dismisses the sheet. No DB
+    /// write happens in selection mode; the caller is responsible for
+    /// persisting the change (typically a PATCH to /api/nutrition via
+    /// MealFormView). Used for the meal-edit "swap with database entry"
+    /// flow.
+    var onFoodSelected: ((MealSelection) -> Void)? = nil
+
+    /// Convenience — true when the view was presented for selection.
+    private var isSelectionMode: Bool { onFoodSelected != nil }
 
     @State private var searchText = ""
     @State private var results: [FoodSearchResult] = []
@@ -118,19 +145,25 @@ struct FoodSearchView: View {
                             Text("No results for \"\(searchText)\"")
                                 .font(.subheadline)
                                 .foregroundColor(Brand.textSecondary)
-                            Button {
-                                // Pre-fill name and go to manual form
-                                mealPrefill = MealPrefill(
-                                    name: searchText,
-                                    calories: "",
-                                    protein: "",
-                                    carbs: "",
-                                    fat: ""
-                                )
-                            } label: {
-                                Text("Log manually instead")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundColor(Brand.accent)
+                            // "Log manually instead" is hidden in selection
+                            // mode — the caller is already in an edit form
+                            // where the user can tweak fields manually, so
+                            // the option would be circular.
+                            if !isSelectionMode {
+                                Button {
+                                    // Pre-fill name and go to manual form
+                                    mealPrefill = MealPrefill(
+                                        name: searchText,
+                                        calories: "",
+                                        protein: "",
+                                        carbs: "",
+                                        fat: ""
+                                    )
+                                } label: {
+                                    Text("Log manually instead")
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundColor(Brand.accent)
+                                }
                             }
                         }
                         Spacer()
@@ -151,7 +184,9 @@ struct FoodSearchView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                if !mealCart.isEmpty {
+                // Cart bar is hidden in selection mode — selection is one food
+                // at a time, no cart concept.
+                if !isSelectionMode && !mealCart.isEmpty {
                     cartBar
                 }
             }
@@ -381,13 +416,23 @@ struct FoodSearchView: View {
                         }
                         .padding(.horizontal, 16)
 
-                        // Add to meal cart
+                        // Primary action — branches on mode. In cart (add) mode
+                        // this appends to the meal cart. In selection mode it
+                        // fires the callback with the scaled macros and dismisses.
                         Button {
-                            addCurrentFoodToCart(food: food, serving: serving)
+                            if isSelectionMode {
+                                useCurrentFoodAsSelection(food: food, serving: serving)
+                            } else {
+                                addCurrentFoodToCart(food: food, serving: serving)
+                            }
                         } label: {
                             HStack(spacing: 8) {
-                                Image(systemName: "plus.circle.fill")
-                                Text(mealCart.isEmpty ? "Add to Meal" : "Add Another (\(mealCart.count) so far)")
+                                Image(systemName: isSelectionMode ? "checkmark.circle.fill" : "plus.circle.fill")
+                                Text(
+                                    isSelectionMode
+                                        ? "Use This Food"
+                                        : (mealCart.isEmpty ? "Add to Meal" : "Add Another (\(mealCart.count) so far)")
+                                )
                             }
                             .font(.headline)
                             .frame(maxWidth: .infinity)
@@ -472,6 +517,25 @@ struct FoodSearchView: View {
 
     // MARK: - Cart Actions
 
+    /// Selection-mode counterpart to `addCurrentFoodToCart`. Builds a
+    /// `MealSelection` from the current food/serving/multiplier, fires the
+    /// `onFoodSelected` callback, and dismisses. No DB write — the caller
+    /// owns persistence.
+    private func useCurrentFoodAsSelection(food: FoodDetail, serving: FoodServing) {
+        let mult = servingMultiplier
+        let selection = MealSelection(
+            foodName: food.name,
+            brandName: food.brandName,
+            calories: Int(Double(serving.calories) * mult),
+            protein: serving.protein * mult,
+            carbs: serving.carbs * mult,
+            fat: serving.fat * mult
+        )
+        HapticManager.success()
+        onFoodSelected?(selection)
+        dismiss()
+    }
+
     private func addCurrentFoodToCart(food: FoodDetail, serving: FoodServing) {
         let mult = servingMultiplier
         let item = MealCartItem(
@@ -540,14 +604,31 @@ struct FoodSearchView: View {
                 servingMultiplier = 1.0
             }
         } catch {
-            // Fallback: use search result data directly
-            mealPrefill = MealPrefill(
-                name: result.name,
-                calories: result.calories.map { "\($0)" } ?? "",
-                protein: result.protein.map { String(format: "%.0f", $0) } ?? "",
-                carbs: result.carbs.map { String(format: "%.0f", $0) } ?? "",
-                fat: result.fat.map { String(format: "%.0f", $0) } ?? ""
-            )
+            if isSelectionMode {
+                // Selection mode fallback — use the list-row data directly as
+                // a selection payload. Avoids opening a nested MealFormView on
+                // top of the caller's edit form.
+                let selection = MealSelection(
+                    foodName: result.name,
+                    brandName: result.brandName,
+                    calories: result.calories ?? 0,
+                    protein: result.protein ?? 0,
+                    carbs: result.carbs ?? 0,
+                    fat: result.fat ?? 0
+                )
+                HapticManager.success()
+                onFoodSelected?(selection)
+                dismiss()
+            } else {
+                // Fallback: pre-fill the manual form with the search result data.
+                mealPrefill = MealPrefill(
+                    name: result.name,
+                    calories: result.calories.map { "\($0)" } ?? "",
+                    protein: result.protein.map { String(format: "%.0f", $0) } ?? "",
+                    carbs: result.carbs.map { String(format: "%.0f", $0) } ?? "",
+                    fat: result.fat.map { String(format: "%.0f", $0) } ?? ""
+                )
+            }
         }
     }
 }
@@ -791,8 +872,14 @@ struct MealReviewView: View {
             let _: SuccessResponse = try await apiService.postRaw("/nutrition", jsonData: jsonData)
             HapticManager.success()
             items.removeAll()
+            // Only call onSaved — the parent (FoodSearchView) dismisses itself
+            // in its onSaved closure, which cascades down and unmounts this
+            // review sheet as a side effect. Calling dismiss() here too would
+            // fire a second dismiss on an already-unmounting view, and
+            // SwiftUI propagates that up the sheet chain — ending up popping
+            // the user all the way back to the root tab. Classic sheet-on-sheet
+            // dismissal bug.
             onSaved()
-            dismiss()
         } catch {
             HapticManager.error()
             errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription

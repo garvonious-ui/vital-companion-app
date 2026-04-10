@@ -13,7 +13,6 @@ struct ActivityView: View {
     @State private var plans: [WorkoutPlan] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
-    @State private var showMealForm = false
     @State private var showMealScan = false
     @State private var showFoodSearch = false
     @State private var showMealOptions = false
@@ -82,13 +81,7 @@ struct ActivityView: View {
             .confirmationDialog("Log Meal", isPresented: $showMealOptions) {
                 Button("🔍 Search Food Database") { showFoodSearch = true }
                 Button("📸 Scan Meal Photo") { showMealScan = true }
-                Button("✏️ Log Manually") { showMealForm = true }
                 Button("Cancel", role: .cancel) {}
-            }
-            .sheet(isPresented: $showMealForm, onDismiss: {
-                Task { await loadData() }
-            }) {
-                MealFormView(date: formatDate(Date()), editingMeal: nil)
             }
             .sheet(isPresented: $showMealScan, onDismiss: {
                 Task { await loadData() }
@@ -123,7 +116,11 @@ struct ActivityView: View {
                 QuickLogView()
             }
             .sheet(item: $selectedWorkout) { workout in
-                WorkoutDetailView(workout: workout)
+                WorkoutDetailView(workout: workout, onDeleted: { deletedId in
+                    // Remove locally so the Recent Workouts list updates
+                    // immediately without waiting for a full refetch.
+                    workouts.removeAll { $0.id == deletedId }
+                })
             }
             .fullScreenCover(item: $selectedPlanDay) { day in
                 if let plan = selectedPlan {

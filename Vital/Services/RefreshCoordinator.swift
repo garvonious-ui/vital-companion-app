@@ -18,6 +18,15 @@ final class RefreshCoordinator {
     /// Monotonic counter. Tab views reload when this changes.
     private(set) var refreshToken: Int = 0
 
+    /// Which tab MainTabView is currently showing. Exposed here (rather than
+    /// as local `@State` inside MainTabView) so non-parent views can
+    /// programmatically switch tabs — e.g. TodayView jumps to Activity after
+    /// the user logs a meal via a quick action, so they land on the screen
+    /// where the new entry is visible.
+    ///
+    /// Indices: 0 = Today, 1 = Activity, 2 = Profile.
+    var selectedTab: Int = 0
+
     /// Bump the token so all observing views reload.
     func requestRefresh() {
         refreshToken &+= 1

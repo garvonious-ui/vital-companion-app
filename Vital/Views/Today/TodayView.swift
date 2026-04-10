@@ -14,7 +14,6 @@ struct TodayView: View {
     @State private var errorMessage: String?
     @State private var showContent = false
     @State private var showChat = false
-    @State private var showMealForm = false
     @State private var showMealScan = false
     @State private var showFoodSearch = false
     @State private var showMealOptions = false
@@ -203,17 +202,24 @@ struct TodayView: View {
             .confirmationDialog("Log Meal", isPresented: $showMealOptions) {
                 Button("🔍 Search Food Database") { showFoodSearch = true }
                 Button("📸 Scan Meal Photo") { showMealScan = true }
-                Button("✏️ Log Manually") { showMealForm = true }
                 Button("Cancel", role: .cancel) {}
             }
-            .sheet(isPresented: $showMealForm) {
-                MealFormView(date: todayDateString, editingMeal: nil)
-            }
             .sheet(isPresented: $showMealScan) {
-                MealAnalysisView(authService: authService)
+                // After a successful save, jump to the Activity tab so the
+                // user lands on the screen where their logged meal is
+                // visible. Today is a "quick action" surface — the results
+                // live on Activity.
+                MealAnalysisView(authService: authService) {
+                    refreshCoordinator.selectedTab = 1
+                }
             }
             .sheet(isPresented: $showFoodSearch) {
-                FoodSearchView(date: todayDateString, onSaved: nil)
+                FoodSearchView(
+                    date: todayDateString,
+                    onSaved: {
+                        refreshCoordinator.selectedTab = 1
+                    }
+                )
             }
 .sheet(isPresented: $showWater) {
                 WaterQuickAddView()

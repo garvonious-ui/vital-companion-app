@@ -104,7 +104,6 @@ struct NutritionView: View {
             .confirmationDialog("Log Meal", isPresented: $showAddOptions) {
                 Button("🔍 Search Food Database") { showFoodSearch = true }
                 Button("📸 Scan Meal Photo") { showMealScan = true }
-                Button("✏️ Log Manually") { mealForm = .create }
                 Button("Cancel", role: .cancel) {}
             }
             .sheet(item: $mealForm, onDismiss: {
@@ -313,8 +312,12 @@ struct NutritionView: View {
                     Text("No meals logged")
                         .font(.subheadline)
                         .foregroundColor(Brand.textMuted)
+                    // Consistent with the top-right + action sheet — primary
+                    // entry point is food search. Users can fall back to
+                    // manual entry via the "Log manually instead" link inside
+                    // FoodSearchView when no search results match.
                     Button {
-                        mealForm = .create
+                        showAddOptions = true
                     } label: {
                         Text("Log a Meal")
                             .font(.subheadline.weight(.semibold))
