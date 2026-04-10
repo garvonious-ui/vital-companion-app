@@ -260,9 +260,68 @@
 - [x] **TestFlight build 18 uploaded** via Xcode Organizer (multi-item meals, all bug fixes)
 
 ### Pending from Session 22 (carry to next session)
-- [ ] Test build 18 on device after App Store Connect processing finishes
+- [x] Test build 18 on device after App Store Connect processing finishes (superseded by build 19)
 - [ ] Click Apple's "Request Access" for App Store Connect API (Users and Access → Integrations) so future uploads can be scriptable
-- [ ] Audit `QuickLogView` + `WorkoutDetailView` for the same `apiService.post(_:body:)` snake_case bug
+- [x] Audit `QuickLogView` + `WorkoutDetailView` for the same `apiService.post(_:body:)` snake_case bug — Session 23: both were affected, fixed, `post(_:body:)` deleted from APIService entirely
+
+### Session 23 — Refresh perf, encoder audit, splash, meal/workout UX
+#### Refresh performance overhaul
+- [x] New RefreshCoordinator — single source of truth for foreground refresh
+- [x] `scenePhase` handler removed from TodayView + ActivityView (MainTabView only)
+- [x] 10s debounce on MainTabView scenePhase, 60s debounce on AuthService.refreshSession, 5min cooldown on Oura sync
+- [x] Today/Activity/Profile loadData — first-load vs refresh branching (skeleton only on first load, cached data stays visible on refresh)
+- [x] ProfileView joined the coordinator
+- [x] URLSession timeout 30s → 15s
+- [x] Parallelize HealthKit + Oura sync on cold launch (was serial)
+
+#### Encoder bug audit (Session 22 carry-over)
+- [x] QuickLogView — switched to postRaw, fixed field name mismatch (`name`→`workoutName`, `duration`→`durationMin`, `calories`→`activeCalories`)
+- [x] WorkoutDetailView AddExerciseView — switched to postRaw so `workoutDate`/`muscleGroup`/`weightLbs`/`restSec` actually land in the DB
+- [x] Deleted dead trap structs: QuickLogBody, ExerciseLogBody, NutritionLogBody
+- [x] **Deleted `apiService.post(_:body:)` and `patch(_:body:)` entirely** — zero callers remain, bug class is now impossible to reintroduce
+- [x] Deleted orphan exercise_log row (the one signature-perfect victim of the original bug)
+- [x] Backend error handlers on `/api/workouts` and `/api/exercises` now extract `.message` from Error-shaped objects (was showing `"[object Object]"`)
+
+#### Animated splash screen
+- [x] New `SplashView` — breathing gradient logo, rotating status messages, ambient periwinkle glow
+- [x] Single-instance via ZStack overlay pattern in ContentView (state persists across auth → profile-check transitions)
+- [x] `showSplash` computed property gates visibility cleanly
+- [x] `deviceType` seeded from UserDefaults at `@State` init time (fixes DeviceSelection flicker during startup race)
+- [x] Replaces the bland `ProgressView` that was showing during auth + profile check
+
+#### Meal and workout UX
+- [x] Meal edit stale-prefill fix — NutritionView uses `MealFormPresentation` enum with `.sheet(item:)`
+- [x] Meal delete button in MealFormView edit mode (+ confirmation dialog)
+- [x] Workout delete button in WorkoutDetailView (+ confirmation dialog, `onDeleted` callback for parent list updates)
+- [x] Backend: new `deleteWorkout()` + DELETE handler on `/api/workouts`
+- [x] Food database integration in meal edit — new `onFoodSelected` callback mode in FoodSearchView, "Search" button in MealFormView opens in selection mode, replaces name + macros in-place
+- [x] "Log Manually" removed from Today, Activity, Nutrition action sheets (manual form still reachable via FoodSearchView's "Log manually instead" fallback)
+- [x] AddExerciseView — dismisses after save (was silently resetting form, user thought it failed)
+- [x] Multi-item cart preserved — zero regression to Session 22's hero feature
+- [x] MealReviewView dismissal bug fix (double-dismiss was cascading past FoodSearchView and popping to root)
+
+#### Post-save navigation
+- [x] RefreshCoordinator owns `selectedTab: Int`, MainTabView binds TabView to it
+- [x] TodayView meal saves (Scan + Search) jump to Activity tab after save
+
+#### DB migration
+- [x] `expand_workout_types` — `workouts_type_check` now accepts Running, Cycling, Swimming, Yoga directly (iOS no longer maps them to Cardio)
+- [x] iOS QuickLogView sends canonical DB values directly (type mapping removed)
+
+#### Shipping
+- [x] Commit web dashboard changes (workouts DELETE + error handlers)
+- [x] Commit iOS changes (meal+workout UX + tab switching + redirect fix)
+- [x] Bump CURRENT_PROJECT_VERSION to 19
+- [x] Both repos pushed to origin
+- [x] **TestFlight build 19 uploaded** via Xcode Organizer
+
+### Pending from Session 23 (carry to next session)
+- [ ] Click Apple's "Request Access" for App Store Connect API (still deferred)
+- [ ] Test build 19 on device after App Store Connect processing finishes
+- [ ] App Store screenshots
+- [ ] App Store description
+- [ ] Submit to App Store
+- [ ] Test onboarding with a fresh account
 
 ### Manual Data Entry
 - [x] Manual sleep logging — tap sleep card when empty → alert to enter hours

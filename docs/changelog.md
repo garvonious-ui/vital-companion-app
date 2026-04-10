@@ -1,5 +1,206 @@
 # Changelog — Vital Companion App
 
+## 2026-04-09/10 — Session 23
+
+Long session. Started with a user report that "the app is running much slower now, it's taking a lot of time to load pages, and sometimes it just stays in a loading state" and ended with TestFlight build 19 uploaded carrying a massive perf overhaul, the full Session 22 encoder-bug audit finally closed out, an animated splash screen, food database integration into the meal edit flow, workout delete, and a handful of cross-cutting UX fixes.
+
+### Refresh performance overhaul
+
+User-reported regression: foreground return was taking ~5-10 seconds with the UI frozen and cards flashing to skeletons on every refresh.
+
+**Root cause:** three separate `onChange(of: scenePhase)` handlers — one in MainTabView, one in TodayView, one in ActivityView — were all firing simultaneously on every foreground return. Each called `authService.refreshSession()` (so 3× concurrent Supabase auth refreshes), plus HealthKit sync, plus Oura sync, plus each tab's own API load sequence. Total cold-foreground: ~8-12 concurrent operations. On top of that, every `loadData()` set `isLoading = true` unconditionally, wiping the existing data to a skeleton before the new data arrived.
+
+**Fix (Tier 1 + Tier 2):**
+- **New `Vital/Services/RefreshCoordinator.swift`** (`@Observable`) — single source of truth. Exposes a `refreshToken: Int` that tabs observe via `.onChange`. `MainTabView` is now the *only* view listening to `scenePhase`.
+- **`ContentView.swift` MainTabView** — on foreground, debounces (10s cooldown to kill rapid app-switcher toggles), calls `refreshSession()` once, runs device-appropriate sync (HealthKit OR Oura, mutually exclusive), then bumps the coordinator's `refreshToken`. Tabs observe the bump and each reloads its own data once.
+- **`TodayView`, `ActivityView`, `ProfileView` `scenePhase` handlers — deleted.** All three subscribe to the coordinator instead.
+- **First-load vs refresh branching in all three tabs** — `isLoading = metrics.isEmpty` (or equivalent). First load shows the skeleton; refresh keeps existing data visible and silently logs errors instead of wiping the screen.
+- **`AuthService.refreshSession()`** — 60s debounce (Supabase tokens live ~1 hour, no reason to refresh on every foreground). Added `force: Bool = false` so APIService can bypass the debounce on a real 401.
+- **Oura sync** — 5-minute static cooldown via `MainTabView.lastOuraSyncAt`.
+- **`APIService`** — URLSession `timeoutInterval` 30s → 15s. Failing fast beats silently hanging.
+- **HealthKit sync + Oura sync** — serialized on cold launch (the previous task-group plumbing hit a Swift 6 region-isolation checker bug and was unnecessary anyway, since a user is exactly one device type).
+
+### Encoder bug audit (Session 22 carry-over, closed for real this time)
+
+Session 22 found `apiService.post(_:body:)` silently dropping camelCase fields on the nutrition save path due to `JSONEncoder`'s `.convertToSnakeCase` colliding with backend routes that read camelCase. The session-end TODO was to audit the only other two callers: `QuickLogView` (quick log workout) and `WorkoutDetailView.AddExerciseView` (add exercise).
+
+**Investigation:** Queried Supabase for historical evidence.
+- `QuickLogView` → `/api/workouts` — sends `{type, name, duration, calories, date, notes}` but backend expects `{workoutName, durationMin, activeCalories, ...}`. **Worse**: `workout_name` is NOT NULL in the DB, so every iOS Quick Log save has been throwing a constraint violation silently. Zero manual rows since 2026-03-30 — the feature has been 100% non-functional for weeks, user just didn't notice because Apple Watch sync (193 rows) is the primary workout source.
+- `WorkoutDetailView.AddExerciseView` → `/api/exercises` — sends camelCase `{workoutDate, muscleGroup, weightLbs, restSec}` which the encoder converts to snake_case on wire, but `createExerciseLogEntry` in `data.ts` reads camelCase. All four fields silently dropped. Found exactly **one signature-perfect orphan row** in `exercise_log` from 2026-03-30: `"Dumbbell Bench Press"` with NULL workout_date / muscle_group / weight_lbs / rest_sec. Lou tried it once, saw garbage, never touched the feature again.
+
+**Fixes:**
+- **`QuickLogView.swift`** — `save()` now uses `postRaw` with a raw `[String: Any]` dict keyed to the backend's actual field names. Error display uses `(error as? APIError)?.errorDescription` so real messages surface.
+- **`WorkoutDetailView.swift` AddExerciseView** — same treatment. Added `errorMessage` state + UI display (the catch block was previously completely silent). Save path now dismisses the sheet after success so the parent reloads and the user sees their saved exercise.
+- **Deleted trap structs**: `QuickLogBody` (inline in QuickLogView.swift), `ExerciseLogBody` (AppModels.swift), `NutritionLogBody` (AppModels.swift). Updated the dangling reference comment in `MealFormView.swift`.
+- **Deleted `apiService.post(_:body:)` and `patch(_:body:)` entirely** from `APIService.swift`. Zero callers remain. Added an explanatory comment where they used to be, pointing future devs at `postRaw` / `patchRaw`. **This bug class is now impossible to reintroduce.**
+- **Deleted orphan exercise_log row** (`b7a2c066-d92f-4521-b707-71975b744e10`) via Supabase MCP.
+- **Backend `/api/workouts` + `/api/exercises` error handlers** — now extract `.message` from Error-shaped objects instead of `String(error)` which yielded `"[object Object]"`. Same fix we applied to `/api/nutrition` in Session 22.
+
+### Workout type CHECK constraint found mid-audit
+
+After the initial QuickLog fix, the user's "HIIT" test still failed with a server 500 ("[object Object]"). The deployed error handler fix surfaced the real error: `workouts_type_check` CHECK constraint requires the **exact capitalized** set `{HIIT, Strength, Cardio, Flexibility, Walking, Other}`. iOS was sending lowercase `hiit`, `strength`, etc. Plus iOS had four categories not in the DB set at all: `running`, `cycling`, `swimming`, `yoga`.
+
+**Temporary fix:** iOS-side mapping — the picker's `dbValue` sent `Cardio` for Running/Cycling/Swimming and `Flexibility` for Yoga.
+
+**Permanent fix:** Supabase migration `expand_workout_types` — dropped and recreated the constraint to accept the full set `{HIIT, Strength, Cardio, Running, Cycling, Swimming, Flexibility, Yoga, Walking, Other}`. Applied to prod via MCP. iOS mapping code removed; `QuickLogView.workoutTypes` now sends canonical DB values directly (id == dbValue).
+
+### Animated splash screen
+
+User reported: "The initial launch from the new build took an extremely long time. I also think we need a cool loading screen on initial app launch."
+
+First-install launches are slow due to iOS signature verification + HealthKit first-auth + Supabase session provisioning + cold Vercel functions. The existing `ProgressView().tint(.white)` spinner during `authService.isLoading` made those seconds feel endless.
+
+**New `Vital/Views/SplashView.swift`:**
+- Gradient circle + "V" mark matching `LoginView` exactly (zero visual snap on handoff to auth screen)
+- Breathing animation: halo (blurred) scales 0.92→1.08, gradient circle 0.96→1.04, letter 0.98→1.02 — all on a 1.8s ease-in-out repeatForever loop with parallax depth
+- Ambient periwinkle radial gradient pulsing counter-phase to the mark on a 2.4s cycle
+- "VITAL" wordmark with 8pt letter-spacing
+- Rotating status text (LOADING → SYNCING YOUR DATA → ALMOST READY) via a structured-concurrency `Task` loop that cycles every 1.8s and auto-cancels when the view tears down
+- Fades in via `appeared` state, breathing kicks off 0.3s later via `DispatchQueue.main.asyncAfter` so the initial fade-in doesn't fight the repeat-forever loop
+
+**ContentView restructure** — single splash instance via ZStack overlay pattern. Previously I had `SplashView()` in two separate `if` branches (one for `authService.isLoading`, one for `!profileChecked`), which SwiftUI treats as two different view identities — the second instance mounted fresh when auth finished, resetting `breathe`/`appeared`/`messageIndex`. User reported "the vital thing loads twice." Fixed by:
+- Body is now a `ZStack { contentLayer; if showSplash { SplashView().transition(.opacity) } }`
+- `showSplash` computed: `authService.isLoading || (authService.isSignedIn && deviceType != nil && !profileChecked)`
+- `.animation(.easeOut(duration: 0.35), value: showSplash)` on the ZStack
+- `contentLayer` is a `@ViewBuilder` that switches between LoginView / DeviceSelectionView / `Color.clear.task { await checkProfile() }` / OnboardingView / MainTabView
+- The splash now stays mounted continuously from the first frame through the auth + profile-check chain
+
+**LoginView/DeviceSelectionView flicker fix** — user reported "right at the end of the splash the login screen tries to creep in and then it goes to the today page." Race condition: when `authService.isLoading` flipped false and `isSignedIn` flipped true in the same Supabase SDK callback, SwiftUI re-rendered the body once before the `onChange(isSignedIn)` handler had a chance to load `deviceType` from UserDefaults. That single frame had `(isSignedIn=true, deviceType=nil)` → showSplash evaluated false → contentLayer showed DeviceSelectionView. Fix: seeded `deviceType` from UserDefaults **at `@State` initialization time** so existing users never render with `deviceType == nil` during that window.
+
+### Meal and workout UX
+
+#### Meal edit stale-prefill bug
+User reported: "when you click on an existing meal, no edit screen shows up on the first click, the fields display as empty, but if I go back and click again it shows the data filled out."
+
+Classic `.sheet(isPresented:)` stale-closure bug. `NutritionView` had `@State var showMealForm = false` + `@State var editingMeal: NutritionEntry?` and the sheet's content closure captured `editingMeal` at build time, before it updated on the tap gesture.
+
+**Fix:** Converted to `.sheet(item: $mealForm)` with a new `MealFormPresentation` enum (`.create | .edit(NutritionEntry)`). `.sheet(item:)` re-evaluates its content closure whenever the `id` changes, so the closure receives fresh values atomically. Same Session 22 pattern we used for `FoodSearchView.MealPrefill`.
+
+#### Meal delete
+Added `onDeleted: (() -> Void)?` callback to `MealFormView`. New "Delete Meal" destructive button visible in edit mode only, below the Save button, wired through a confirmation dialog. `NutritionView`'s edit presentation hands a delete closure that invokes the existing `deleteMeal()` function.
+
+#### Workout delete
+New backend endpoint:
+- `deleteWorkout(userId, id)` in `src/lib/data.ts`
+- `DELETE /api/workouts?id=xxx` handler in `route.ts`
+- Deployed to Vercel prod
+
+iOS side:
+- `WorkoutDetailView` — new destructive "Delete Workout" button at the bottom of the detail view, confirmation dialog, `isDeleting` state with inline spinner
+- New `onDeleted: ((String) -> Void)?` callback to the parent; `ActivityView` passes a closure that removes the row from its local `workouts` array on success (no refetch needed)
+- Note in the confirm dialog: "Exercises logged on the same date are kept" — `exercise_log` has no FK to `workouts`, just a shared date
+
+#### Food database integration into meal edit
+User observation: "if someone goes to edit a logged meal, they don't get the database again. Maybe we just cook it in to everything."
+
+Previously the food database search was only reachable from the top-level action sheets. Editing a meal meant falling back to pure manual entry.
+
+**`FoodSearchView` selection mode:**
+- New optional parameter `onFoodSelected: ((MealSelection) -> Void)? = nil`
+- New `MealSelection` payload struct (food name, brand, scaled macros)
+- New computed `isSelectionMode: Bool { onFoodSelected != nil }`
+- When `isSelectionMode`: cart bar hidden, "Log manually instead" fallback hidden, `mealPrefill` sheet gated, `.sheet(item: $mealPrefill)` path not reachable
+- New `useCurrentFoodAsSelection()` helper that builds a `MealSelection` from the current food/serving/multiplier and fires the callback + dismisses
+- `selectFood` error fallback branches: in selection mode it uses the list-row data directly instead of opening a nested manual form (avoids sheet-on-sheet-on-sheet)
+- Primary action button label branches: "Add to Meal" in cart mode → "Use This Food" in selection mode
+- **Zero risk to the existing cart flow** — existing callers (Today/Activity/Nutrition action sheets) pass `nil` for `onFoodSelected` and get the unchanged multi-item cart experience
+
+**`MealFormView`:**
+- New prominent "Search" button (periwinkle pill with magnifying glass) just below the Meal Type chips, visible in both create and edit modes
+- Also added a subtle toolbar magnifying glass for power users / nav-bar shortcut enthusiasts
+- Tapping opens `FoodSearchView` in selection mode; callback populates `name` / `calories` / `protein` / `carbs` / `fat` state — meal type is preserved
+- User reviews and taps Update Meal to persist
+
+#### "Log Manually" removed from action sheets
+The action sheets on Today, Activity, and Nutrition now only show Search Food Database + Scan Meal Photo. Manual entry is still reachable via FoodSearchView's "Log manually instead" fallback when a search returns no results. Deleted the dead `showMealForm` state + sheet from Today and Activity. Nutrition's empty-state "Log a Meal" button now opens the action sheet instead of jumping to a blank manual form.
+
+#### AddExerciseView refresh fix
+User report: "it just goes back to add an exercise and doesn't log the previous entry." The save was actually landing in the DB (verified via Supabase — found two fresh rows mid-session), but the form reset to empty and the user had no feedback. Changed `save()` to `dismiss()` after success instead of resetting the form. The parent's `onDismiss` handler (which already existed) reloads the exercises list, so the just-added exercise appears visually.
+
+#### MealReviewView double-dismiss fix
+User report: "after you save the meal it redirects back to the home page which is a weird move." Classic SwiftUI sheet-on-sheet dismissal bug. `MealReviewView.save()` was calling `onSaved()` (which fired `FoodSearchView.dismiss()` via the outer closure) AND `dismiss()` (which dismissed MealReviewView) in the same tick. The second dismiss fired on an already-unmounting view and SwiftUI propagated it up the sheet chain, popping the user back to the root tab. Fix: removed the extra `dismiss()` from `MealReviewView.save()`. The parent `FoodSearchView`'s dismissal cascades down to unmount `MealReviewView` as a side effect. One dismiss in the whole chain.
+
+### Post-save navigation
+
+User observation: "when you quick log a meal from the today page it goes back to the today page, can we make it so that whenever you log a meal/workout it goes to the page where they can see the results?"
+
+Extended `RefreshCoordinator` with `selectedTab: Int`. `MainTabView` now binds `TabView(selection: $coordinator.selectedTab)` via `@Bindable` instead of local `@State`. Any view can programmatically switch tabs by mutating the coordinator.
+
+`TodayView` meal save paths (both `MealAnalysisView` and `FoodSearchView`) now pass `onSaved: { refreshCoordinator.selectedTab = 1 }`, jumping the user to Activity tab after a successful save. Doesn't affect saves originating from Activity itself (already there) or from inside `NutritionView` (user stays in their drilldown).
+
+Workouts don't have a Today-tab entry point (removed in Session 10), so there's no symmetric fix needed — they're always logged from Activity.
+
+### Files Created
+- `Vital/Services/RefreshCoordinator.swift`
+- `Vital/Views/SplashView.swift`
+
+### Files Modified (iOS)
+- `Vital/VitalApp.swift` — injects RefreshCoordinator into environment
+- `Vital/Services/AuthService.swift` — 60s refreshSession debounce, `force` parameter
+- `Vital/Services/APIService.swift` — deleted `post(body:)` and `patch(body:)`, timeout 30s→15s, 401 retry forces refresh
+- `Vital/Views/ContentView.swift` — ZStack splash overlay, contentLayer view builder, MainTabView scenePhase handler with 10s debounce, TabView bound to coordinator, deviceType seeded from UserDefaults at init
+- `Vital/Views/Today/TodayView.swift` — scenePhase handler removed, coordinator observation, first-load vs refresh branching, meal save callbacks switch to Activity tab
+- `Vital/Views/Activity/ActivityView.swift` — scenePhase handler removed, coordinator observation, first-load vs refresh branching, Log Manually removed, workout onDeleted wiring
+- `Vital/Views/Profile/ProfileView.swift` — coordinator observation, first-load vs refresh branching, isCancelled handling
+- `Vital/Views/Nutrition/NutritionView.swift` — MealFormPresentation enum, .sheet(item:) presentation, empty-state button redirect, Log Manually removed
+- `Vital/Views/Nutrition/MealFormView.swift` — onDeleted callback, Delete Meal button, Search food database button (in-form + toolbar), showFoodSearch sheet with selection callback
+- `Vital/Views/Nutrition/FoodSearchView.swift` — MealSelection struct, onFoodSelected callback, selection mode gating for cart/fallback/nested sheet, useCurrentFoodAsSelection helper, double-dismiss fix in MealReviewView.save
+- `Vital/Views/Workouts/QuickLogView.swift` — postRaw save with correct field names, WorkoutTypeOption struct, canonical DB values (no mapping)
+- `Vital/Views/Workouts/WorkoutDetailView.swift` — AddExerciseView postRaw save + dismiss after success + error display, Delete Workout button, onDeleted callback, deleteWorkout() function
+- `Vital/Models/AppModels.swift` — deleted ExerciseLogBody and NutritionLogBody
+- `project.yml` — declared CFBundleShortVersionString and CFBundleVersion as template variables (fixes Session 22 fragility where `xcodegen` would overwrite the literal edits), CURRENT_PROJECT_VERSION 18 → 19
+
+### Files Modified (Web Dashboard)
+- `src/app/api/workouts/route.ts` — new DELETE handler, `.message` extraction in error paths
+- `src/app/api/exercises/route.ts` — `.message` extraction in error paths
+- `src/lib/data.ts` — new `deleteWorkout()` function
+
+### Database Migrations
+- `expand_workout_types` — `workouts_type_check` now accepts Running/Cycling/Swimming/Yoga in addition to the original set
+
+### Backend Deployments
+- Error handler fixes + workouts DELETE endpoint force-deployed to Vercel prod
+
+### Bugs Found
+- **`apiService.post(_:body:)` encoder snake_case bug existed in two more views** (QuickLogView, WorkoutDetailView) beyond the nutrition path found in Session 22. Both are now fixed AND the method is deleted so the bug class is extinct.
+- **`workouts_type_check` CHECK constraint** required exact capitalized values including a fixed set that didn't cover iOS's picker categories. Solved via DB migration rather than iOS-side mapping.
+- **Sheet-on-sheet double dismissal cascades past the inner sheet's parent.** In SwiftUI, calling `dismiss()` twice in rapid succession across two sheets propagates the second call up the chain and dismisses *grandparent* views. The fix is: whoever presents the inner sheet owns the dismiss, never both.
+- **Two separate `SplashView()` instances in an if/else-if chain are NOT identity-equal in SwiftUI.** Even when both render the same view type, SwiftUI treats the two branches as structurally different positions and mounts a fresh instance when moving between them. Fix: single instance at the same position (e.g. in a ZStack overlay) with conditional visibility via a computed property.
+- **`deviceType: DeviceType?` as `@State private var deviceType: DeviceType?` has a race window on cold launch** where `isSignedIn` flips true before `onChange` can populate deviceType from UserDefaults. Fix: seed at `@State` init time with a closure that reads UserDefaults synchronously.
+- **Swift 6 region-based isolation checker bug with `TaskGroup.addTask { @MainActor in ... }`** — produced "pattern that the region-based isolation checker does not understand how to check. Please file a bug" errors. Workaround: don't use TaskGroup for cases where you can use simple conditional awaits.
+- **"[object Object]" masking real backend errors** on `/api/workouts` and `/api/exercises` because `String(error)` on Supabase PostgrestError stringifies to that. Same fix as Session 22's `/api/nutrition`.
+
+### Decisions
+- **Delete `apiService.post(_:body:)` entirely** rather than keep it with a warning comment. Warning comments get ignored; deleting the method makes the bug impossible to write. `postStream` remains but only encodes `ChatRequest` (single-word fields, immune).
+- **Selection mode in FoodSearchView over a new dedicated view** — reusing the existing search/serving-picker UI is much less code than building a parallel version for edit, and the gating logic is straightforward (`isSelectionMode` computed property).
+- **Expand the DB constraint instead of mapping on iOS** for workout types. Schema migration is trivial, zero existing data affected, and preserves category fidelity for every future save. iOS-side mapping would have meant Running/Cycling/Swimming rows all showing up as "Cardio" in history.
+- **Keep the toolbar magnifying glass in addition to the prominent in-form "Search" button.** Redundant but discoverable via two different patterns (primary action in form, secondary shortcut in nav bar).
+- **`MealFormView` Delete button in edit mode only, below Save, destructive-styled** — matches the Session 22 meal form aesthetic, confirmation dialog prevents fat-finger deletes.
+- **Tab switching only from Today → Activity after meal save.** Not from Activity → Activity (no-op), not from edit flows (user already knows where the data is), not from workouts (no Today entry point). Scoped change, doesn't touch unrelated flows.
+- **One big Session 23 iOS commit + one web commit + one version-bump commit** rather than splitting by feature. The features are intertwined (meal edit touches FoodSearchView which touches tab switching which touches RefreshCoordinator), and a more granular split would require more cross-commit fixup.
+
+### Shipping
+- **Both repos pushed to GitHub** (vital-companion-app + vital-health-dashboard)
+- **TestFlight build 19 uploaded** via Xcode Organizer — processing in App Store Connect
+- CURRENT_PROJECT_VERSION bumped to 19, Info.plist templates propagated cleanly (Session 22 project.yml fix held up)
+
+### Status
+- Refresh perf overhaul: **Shipped**
+- Encoder bug audit: **Closed for real this time** — bug class is extinct
+- Animated splash screen: **Shipped**
+- Meal edit + food database integration: **Shipped**
+- Meal delete + workout delete: **Shipped**
+- Workout type expansion: **Migrated + deployed**
+- Post-save tab switching: **Shipped**
+- TestFlight build 19: **Uploaded**
+
+### What's Next (for next session)
+1. **Click Apple's "Request Access" for App Store Connect API** — 5-minute click-through, unlocks fully scriptable TestFlight uploads. Still deferred.
+2. **Test build 19 on device** once App Store Connect finishes processing
+3. **App Store screenshots + description**
+4. **Test onboarding with a fresh account**
+5. **Submit to App Store**
+
 ## 2026-04-09 — Session 22
 
 ### FatSecret Premier Free Swap (USDA → FatSecret)
