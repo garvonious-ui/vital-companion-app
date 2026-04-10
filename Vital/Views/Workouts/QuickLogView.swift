@@ -162,32 +162,31 @@ struct QuickLogView: View {
             return f.string(from: Date())
         }()
 
-        let body = QuickLogBody(
-            type: type,
-            name: name.isEmpty ? type.capitalized : name.trimmingCharacters(in: .whitespaces),
-            duration: Int(duration) ?? 0,
-            calories: Int(calories) ?? 0,
-            date: today,
-            notes: notes.trimmingCharacters(in: .whitespaces)
-        )
+        // Build the body as a raw dictionary using the backend's camelCase field
+        // names directly. APIService's typed `post(body:)` would run this through
+        // `.convertToSnakeCase`, and the `/workouts` route reads camelCase —
+        // plus our field names here intentionally don't match the Swift struct
+        // names we'd want (backend expects `workoutName`/`durationMin`/
+        // `activeCalories`, not `name`/`duration`/`calories`). This was silently
+        // failing with a NOT NULL violation on `workout_name` on every call.
+        var body: [String: Any] = [
+            "type": type,
+            "workoutName": name.isEmpty ? type.capitalized : name.trimmingCharacters(in: .whitespaces),
+            "date": today,
+            "notes": notes.trimmingCharacters(in: .whitespaces),
+        ]
+        if let d = Int(duration) { body["durationMin"] = d }
+        if let c = Int(calories), c > 0 { body["activeCalories"] = c }
 
         do {
-            let _: APIResponse<Workout> = try await apiService.post("/workouts", body: body)
+            let jsonData = try JSONSerialization.data(withJSONObject: body)
+            let _: SuccessResponse = try await apiService.postRaw("/workouts", jsonData: jsonData)
             HapticManager.success()
             dismiss()
         } catch {
             HapticManager.error()
-            errorMessage = error.localizedDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
             isSaving = false
         }
     }
-}
-
-struct QuickLogBody: Codable {
-    let type: String
-    let name: String
-    let duration: Int
-    let calories: Int
-    let date: String
-    let notes: String
 }

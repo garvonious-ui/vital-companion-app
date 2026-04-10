@@ -3,7 +3,9 @@ import SwiftUI
 struct ActivityView: View {
     @Environment(APIService.self) var apiService
     @Environment(AuthService.self) var authService
-    @Environment(\.scenePhase) private var scenePhase
+    @Environment(RefreshCoordinator.self) var refreshCoordinator
+
+    @State private var lastLoadTime: Date = .distantPast
 
     @State private var meals: [NutritionEntry] = []
     @State private var targets: UserTargets?
@@ -130,12 +132,15 @@ struct ActivityView: View {
             }
             .task {
                 await loadData()
+                lastLoadTime = Date()
             }
-            .onChange(of: scenePhase) { _, newPhase in
-                if newPhase == .active && !isLoading {
+            .onChange(of: refreshCoordinator.refreshToken) { _, _ in
+                // Central refresh trigger (foreground return, post-sync, etc.).
+                // 3s debounce protects against initial-launch double-fire.
+                if Date().timeIntervalSince(lastLoadTime) > 3 {
                     Task {
-                        _ = await authService.refreshSession()
                         await loadData()
+                        lastLoadTime = Date()
                     }
                 }
             }
@@ -414,8 +419,13 @@ struct ActivityView: View {
     // MARK: - Data
 
     private func loadData() async {
-        errorMessage = nil
-        isLoading = meals.isEmpty && workouts.isEmpty
+        // Only show the skeleton on the very first load — on refresh, keep the
+        // existing data visible so the screen doesn't flash a loading state.
+        let firstLoad = meals.isEmpty && workouts.isEmpty
+        if firstLoad {
+            isLoading = true
+            errorMessage = nil
+        }
 
         do {
             async let nutritionResp: APIResponse<[NutritionEntry]> = apiService.get("/nutrition")
@@ -434,8 +444,13 @@ struct ActivityView: View {
             // Silently ignore cancelled requests (happens on background/foreground transitions)
             isLoading = false
         } catch {
-            errorMessage = error.localizedDescription
             isLoading = false
+            // Only surface errors on first load. On refresh, keep cached data.
+            if firstLoad {
+                errorMessage = error.localizedDescription
+            } else {
+                print("[ActivityView] refresh failed: \(error)")
+            }
         }
     }
 

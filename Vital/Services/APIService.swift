@@ -50,17 +50,12 @@ import Observation
         return try await execute(request)
     }
 
-    func post<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
-        var request = try await buildRequest(path: path, method: "POST")
-        request.httpBody = try encoder.encode(body)
-        return try await execute(request)
-    }
-
-    func patch<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
-        var request = try await buildRequest(path: path, method: "PATCH")
-        request.httpBody = try encoder.encode(body)
-        return try await execute(request)
-    }
+    // Intentionally no typed `post(body:)` or `patch(body:)` — the JSONEncoder
+    // uses `.convertToSnakeCase`, which silently rewrites camelCase fields on
+    // the wire. Our backend routes read camelCase, so those writes lose data.
+    // Use `postRaw` / `patchRaw` with a `[String: Any]` dict via
+    // `JSONSerialization.data(withJSONObject:)` instead. See Session 22 and 23
+    // changelog entries for history.
 
     func delete<T: Decodable>(_ path: String, queryItems: [URLQueryItem]? = nil) async throws -> T {
         let request = try await buildRequest(path: path, method: "DELETE", queryItems: queryItems)
@@ -105,7 +100,9 @@ import Observation
         request.httpMethod = method
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
+        // 15s beats 30s for UX — a hung request blocks the loading state for the
+        // full duration, so failing fast is preferable to silently waiting.
+        request.timeoutInterval = 15
         return request
     }
 
@@ -135,9 +132,10 @@ import Observation
         }
 
         if http.statusCode == 401 && !retried {
-            // Try refreshing the session and retrying once
+            // Try refreshing the session and retrying once. Force bypasses the
+            // 60s debounce — on an actual 401 we know the token is bad.
             print("[APIService] Got 401, attempting token refresh...")
-            let refreshed = await authService.refreshSession()
+            let refreshed = await authService.refreshSession(force: true)
             if refreshed {
                 let newRequest = try await buildRequest(
                     path: request.url!.path.replacingOccurrences(of: "/api", with: ""),

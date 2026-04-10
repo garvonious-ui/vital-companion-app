@@ -90,10 +90,12 @@ struct MainTabView: View {
     @Environment(SyncService.self) var syncService
     @Environment(APIService.self) var apiService
     @Environment(NetworkMonitor.self) var networkMonitor
+    @Environment(RefreshCoordinator.self) var refreshCoordinator
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 0
     @State private var hasLaunched = false
+    @State private var lastForegroundRefresh: Date = .distantPast
 
     var body: some View {
         VStack(spacing: 0) {
@@ -150,40 +152,61 @@ struct MainTabView: View {
             UITabBar.appearance().scrollEdgeAppearance = appearance
         }
         .task {
-            let savedDevice = UserDefaults.standard.string(forKey: "selectedDeviceType")
-                .flatMap { DeviceType(rawValue: $0) } ?? .appleWatch
-            if savedDevice.shouldSyncHealthKit {
-                healthKitService.enableBackgroundDelivery()
-                await syncService.sync()
-            }
-            if savedDevice == .oura {
-                await triggerOuraSync()
-            }
+            // Initial launch: kick off background sync concurrently, don't block
+            // the tabs' own data loads. The tabs fire their own `.task` in parallel
+            // and will re-load when the coordinator bumps after sync finishes.
+            await runBackgroundSync()
             hasLaunched = true
+            lastForegroundRefresh = Date()
+            refreshCoordinator.requestRefresh()
         }
         .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active && hasLaunched {
-                Task {
-                    _ = await authService.refreshSession()
-                    let savedDevice = UserDefaults.standard.string(forKey: "selectedDeviceType")
-                        .flatMap { DeviceType(rawValue: $0) } ?? .appleWatch
-                    if savedDevice.shouldSyncHealthKit {
-                        await syncService.sync()
-                    }
-                    if savedDevice == .oura {
-                        await triggerOuraSync()
-                    }
-                }
+            guard newPhase == .active, hasLaunched else { return }
+            // Foreground debounce: ignore rapid scenePhase flips (lock screen,
+            // notification center, app switcher). 10s cooldown.
+            if Date().timeIntervalSince(lastForegroundRefresh) < 10 { return }
+            lastForegroundRefresh = Date()
+            Task {
+                _ = await authService.refreshSession()
+                await runBackgroundSync()
+                refreshCoordinator.requestRefresh()
             }
         }
         } // close VStack
     }
+
+    /// Runs the device-appropriate sync (HealthKit OR Oura — a user is exactly
+    /// one device type, so these are mutually exclusive). Errors are logged but
+    /// swallowed so a sync failure never blocks the UI from refreshing.
+    private func runBackgroundSync() async {
+        let savedDevice = UserDefaults.standard.string(forKey: "selectedDeviceType")
+            .flatMap { DeviceType(rawValue: $0) } ?? .appleWatch
+        if savedDevice.shouldSyncHealthKit {
+            healthKitService.enableBackgroundDelivery()
+            await syncService.sync()
+        } else if savedDevice == .oura {
+            await triggerOuraSync()
+        }
+    }
 }
 
 extension MainTabView {
+    /// Last successful Oura sync timestamp. Static so it survives SwiftUI view
+    /// re-creation (MainTabView can be rebuilt on scene transitions).
+    private static let ouraSyncCooldown: TimeInterval = 5 * 60
+    private static var lastOuraSyncAt: Date = .distantPast
+
     func triggerOuraSync() async {
+        // Backend-side Oura sync is expensive — it hits the Oura API on every
+        // call. 5-minute cooldown prevents rapid foreground flips from piling
+        // up redundant syncs.
+        if Date().timeIntervalSince(Self.lastOuraSyncAt) < Self.ouraSyncCooldown {
+            print("[OuraSync] Skipped (within cooldown)")
+            return
+        }
         do {
             let _: SuccessResponse = try await apiService.postRaw("/devices/oura/sync", jsonData: Data("{}".utf8))
+            Self.lastOuraSyncAt = Date()
             print("[OuraSync] Synced successfully")
         } catch {
             print("[OuraSync] Failed: \(error)")

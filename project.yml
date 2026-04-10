@@ -37,6 +37,11 @@ targets:
       properties:
         UILaunchScreen: {}
         CFBundleIconName: AppIcon
+        # Use build-setting templates so bumps to MARKETING_VERSION /
+        # CURRENT_PROJECT_VERSION above propagate. Without these here,
+        # xcodegen auto-fills literal "1.0" / "1" and clobbers the fix.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationPortraitUpsideDown

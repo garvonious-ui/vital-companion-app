@@ -9,6 +9,7 @@ struct VitalApp: App {
     @State private var apiService: APIService
     @State private var networkMonitor: NetworkMonitor
     @State private var chatHistory: ChatHistoryManager
+    @State private var refreshCoordinator: RefreshCoordinator
 
     init() {
         let auth = AuthService()
@@ -17,6 +18,7 @@ struct VitalApp: App {
         let api = APIService(authService: auth)
         let network = NetworkMonitor()
         let chat = ChatHistoryManager()
+        let refresh = RefreshCoordinator()
 
         self.authService = auth
         self.healthKitService = healthKit
@@ -24,6 +26,7 @@ struct VitalApp: App {
         self.apiService = api
         self.networkMonitor = network
         self.chatHistory = chat
+        self.refreshCoordinator = refresh
 
         registerBackgroundTasks()
     }
@@ -37,6 +40,7 @@ struct VitalApp: App {
                 .environment(apiService)
                 .environment(networkMonitor)
                 .environment(chatHistory)
+                .environment(refreshCoordinator)
                 .preferredColorScheme(.dark)
         }
     }

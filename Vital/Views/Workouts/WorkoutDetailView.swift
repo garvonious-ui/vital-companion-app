@@ -330,6 +330,7 @@ struct AddExerciseView: View {
     @State private var reps = ""
     @State private var weight = ""
     @State private var isSaving = false
+    @State private var errorMessage: String?
 
     private var filteredLibrary: [LibraryExercise] {
         if searchText.isEmpty { return library }
@@ -415,6 +416,13 @@ struct AddExerciseView: View {
                             }
                         }
 
+                        if let error = errorMessage {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(Brand.critical)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
                         // Save
                         Button {
                             Task { await save() }
@@ -465,19 +473,25 @@ struct AddExerciseView: View {
 
     private func save() async {
         isSaving = true
-        let body = ExerciseLogBody(
-            exercise: exerciseName,
-            workoutDate: workoutDate,
-            muscleGroup: muscleGroup.isEmpty ? nil : muscleGroup,
-            sets: Int(sets),
-            reps: reps.isEmpty ? nil : reps,
-            weightLbs: Double(weight),
-            restSec: nil,
-            notes: nil
-        )
+        errorMessage = nil
+
+        // Build the body as a raw dictionary using the backend's camelCase field
+        // names directly. APIService's typed `post(body:)` would convert these
+        // to snake_case via `.convertToSnakeCase`, and `createExerciseLogEntry`
+        // in data.ts reads camelCase — silently dropping workout_date,
+        // muscle_group, weight_lbs, and rest_sec on every previous save.
+        var body: [String: Any] = [
+            "exercise": exerciseName,
+            "workoutDate": workoutDate,
+        ]
+        if !muscleGroup.isEmpty { body["muscleGroup"] = muscleGroup }
+        if let s = Int(sets) { body["sets"] = s }
+        if !reps.isEmpty { body["reps"] = reps }
+        if let w = Double(weight) { body["weightLbs"] = w }
 
         do {
-            let _: APIResponse<String?> = try await apiService.post("/exercises", body: body)
+            let jsonData = try JSONSerialization.data(withJSONObject: body)
+            let _: SuccessResponse = try await apiService.postRaw("/exercises", jsonData: jsonData)
             HapticManager.success()
             // Reset for adding another
             exerciseName = ""
@@ -488,6 +502,8 @@ struct AddExerciseView: View {
             weight = ""
             isSaving = false
         } catch {
+            HapticManager.error()
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
             isSaving = false
         }
     }

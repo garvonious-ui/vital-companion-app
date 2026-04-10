@@ -23,6 +23,7 @@
 		388B58FA32782AAF6208DA25 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA86C9E18CF5593EEA2BC55 /* TodayView.swift */; };
 		482167DBE1E4BFE145E8948B /* WaterQuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D0B47920B557F8962A90F7 /* WaterQuickAddView.swift */; };
 		4E3189299980475CEDF47604 /* MealFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 234C8B4F374F1A11E2A462BE /* MealFormView.swift */; };
+		5048CB1BBFF64D9FB41C93DD /* RefreshCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 867BBD3AEB0E52D6723B4A7A /* RefreshCoordinator.swift */; };
 		61B1EE2C30CD7785928F53FA /* HealthData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CA0976C5B54CDAB62C9964 /* HealthData.swift */; };
 		63D97D74849E03C0F076194D /* SparklineChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D4225B85291BA2AA157CA81 /* SparklineChart.swift */; };
 		63EDA6B453A78FA2D8C1162F /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3398576D292987F2B5FE4251 /* ImagePicker.swift */; };
@@ -97,6 +98,7 @@
 		7ECFC4ADFF01A5E7F7A5967F /* SkeletonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkeletonView.swift; sourceTree = "<group>"; };
 		81DA91D12D1CEA1BA42A24C8 /* HealthProfileEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthProfileEditView.swift; sourceTree = "<group>"; };
 		82534F92A1788707CFF5DCBD /* DeviceSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSelectionView.swift; sourceTree = "<group>"; };
+		867BBD3AEB0E52D6723B4A7A /* RefreshCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefreshCoordinator.swift; sourceTree = "<group>"; };
 		86AC6E545186B05588923B37 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		9A64A47B9FD55661422FED52 /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
 		9B0D139DCAABA4FF1454DD9E /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
@@ -220,6 +222,7 @@
 				CBF73ED4E98DCD72ABD704F1 /* HealthKitService.swift */,
 				F7D604E9B7E3661E662A5E7F /* MealAnalysisService.swift */,
 				D87B44CB5432E31DD4F5A785 /* NetworkMonitor.swift */,
+				867BBD3AEB0E52D6723B4A7A /* RefreshCoordinator.swift */,
 				419049B12A08DD535DF23CBC /* SyncService.swift */,
 			);
 			path = Services;
@@ -408,6 +411,7 @@
 				742A9E1FF0C34411F30BB3F7 /* ProfileView.swift in Sources */,
 				F4B947C98349231AE4312579 /* QuickLogView.swift in Sources */,
 				F2B878F1B30A5DDE8FD7042E /* RecoveryRing.swift in Sources */,
+				5048CB1BBFF64D9FB41C93DD /* RefreshCoordinator.swift in Sources */,
 				664BF915E1E36D770A850E28 /* SettingsView.swift in Sources */,
 				AC54A7C96E16C3755B82EB2E /* SkeletonView.swift in Sources */,
 				992C271EAF05E18D631CC48C /* SleepDetailView.swift in Sources */,

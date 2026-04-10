@@ -5,8 +5,7 @@ struct TodayView: View {
     @Environment(HealthKitService.self) var healthKitService
     @Environment(AuthService.self) var authService
     @Environment(SyncService.self) var syncService
-
-    @Environment(\.scenePhase) private var scenePhase
+    @Environment(RefreshCoordinator.self) var refreshCoordinator
 
     @State private var metrics: [DailyMetric] = []
     @State private var targets: UserTargets?
@@ -233,20 +232,12 @@ struct TodayView: View {
                 await loadData()
                 lastLoadTime = Date()
             }
-            .onChange(of: syncService.isSyncing) { _, syncing in
-                // Only reload after sync if last load was >3s ago (avoids double-load on launch)
-                if !syncing && Date().timeIntervalSince(lastLoadTime) > 3 {
+            .onChange(of: refreshCoordinator.refreshToken) { _, _ in
+                // Central refresh trigger (foreground return, post-sync, etc.).
+                // 3s debounce protects against initial-launch double-fire where
+                // `.task` and the post-sync bump can arrive close together.
+                if Date().timeIntervalSince(lastLoadTime) > 3 {
                     Task {
-                        await loadData()
-                        lastLoadTime = Date()
-                        triggerAnimations()
-                    }
-                }
-            }
-            .onChange(of: scenePhase) { _, newPhase in
-                if newPhase == .active && !isLoading {
-                    Task {
-                        _ = await authService.refreshSession()
                         await loadData()
                         lastLoadTime = Date()
                         triggerAnimations()
@@ -698,8 +689,13 @@ struct TodayView: View {
     // MARK: - Data
 
     private func loadData() async {
-        isLoading = true
-        errorMessage = nil
+        // Only show the skeleton on the very first load — on refresh, keep the
+        // existing data visible so the screen doesn't flash a loading state.
+        let firstLoad = metrics.isEmpty
+        if firstLoad {
+            isLoading = true
+            errorMessage = nil
+        }
 
         do {
             async let metricsResp: APIResponse<[DailyMetric]> = apiService.get("/metrics")
@@ -711,13 +707,23 @@ struct TodayView: View {
             targets = t.data
             profile = p.data
             isLoading = false
-            withAnimation { showContent = true }
+            errorMessage = nil
+            if firstLoad {
+                withAnimation { showContent = true }
+            }
             triggerAnimations()
         } catch let error as APIError where error.isCancelled {
             isLoading = false
         } catch {
-            errorMessage = error.localizedDescription
             isLoading = false
+            // Only surface errors on first load. On refresh, keep showing cached
+            // data and log the failure — a transient network blip shouldn't wipe
+            // the screen.
+            if firstLoad {
+                errorMessage = error.localizedDescription
+            } else {
+                print("[TodayView] refresh failed: \(error)")
+            }
         }
     }
 

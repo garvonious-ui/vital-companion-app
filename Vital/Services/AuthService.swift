@@ -10,6 +10,7 @@ import Supabase
 
     let client: SupabaseClient
     private var cachedToken: String?
+    private var lastRefreshAt: Date = .distantPast
 
     init() {
         client = SupabaseClient(
@@ -24,6 +25,7 @@ import Supabase
             // Always refresh to get a fresh token — stored session JWT may be expired
             let session = try await client.auth.refreshSession()
             cachedToken = session.accessToken
+            lastRefreshAt = Date()
             isSignedIn = true
             print("[AuthService] Refreshed session, token: \(session.accessToken.prefix(20))...")
         } catch {
@@ -46,6 +48,7 @@ import Supabase
         do {
             let session = try await client.auth.signIn(email: email, password: password)
             cachedToken = session.accessToken
+            lastRefreshAt = Date()
             isSignedIn = true
             print("[AuthService] Sign in success, token: \(session.accessToken.prefix(20))...")
         } catch {
@@ -59,6 +62,7 @@ import Supabase
         do {
             let session = try await client.auth.signUp(email: email, password: password)
             cachedToken = session.session?.accessToken
+            if session.session != nil { lastRefreshAt = Date() }
             isSignedIn = session.session != nil
             print("[AuthService] Sign up success")
         } catch {
@@ -71,6 +75,7 @@ import Supabase
         do {
             try await client.auth.signOut()
             cachedToken = nil
+            lastRefreshAt = .distantPast
             isSignedIn = false
         } catch {
             errorMessage = error.localizedDescription
@@ -102,10 +107,19 @@ import Supabase
         }
     }
 
-    func refreshSession() async -> Bool {
+    /// Refresh the Supabase session token. Debounced to once per 60s — Supabase
+    /// tokens live for ~1 hour, so refreshing more often on every foreground
+    /// return is wasted round trips. Callers can force a refresh by passing
+    /// `force: true` (e.g. on a 401 retry).
+    @discardableResult
+    func refreshSession(force: Bool = false) async -> Bool {
+        if !force, Date().timeIntervalSince(lastRefreshAt) < 60 {
+            return cachedToken != nil
+        }
         do {
             let session = try await client.auth.refreshSession()
             cachedToken = session.accessToken
+            lastRefreshAt = Date()
             return true
         } catch {
             isSignedIn = false

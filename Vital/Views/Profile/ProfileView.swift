@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileView: View {
     @Environment(APIService.self) var apiService
     @Environment(AuthService.self) var authService
+    @Environment(RefreshCoordinator.self) var refreshCoordinator
 
     @State private var profile: UserProfile?
     @State private var targets: UserTargets?
@@ -10,6 +11,7 @@ struct ProfileView: View {
     @State private var labs: [LabResult] = []
     @State private var supplements: [Supplement] = []
     @State private var isLoading = true
+    @State private var lastLoadTime: Date = .distantPast
     @State private var showChat = false
     @State private var showSignOutConfirm = false
     @State private var showWeightEdit = false
@@ -82,6 +84,17 @@ struct ProfileView: View {
             }
             .task {
                 await loadData()
+                lastLoadTime = Date()
+            }
+            .onChange(of: refreshCoordinator.refreshToken) { _, _ in
+                // Central refresh trigger (foreground return, post-sync, etc.).
+                // 3s debounce protects against initial-launch double-fire.
+                if Date().timeIntervalSince(lastLoadTime) > 3 {
+                    Task {
+                        await loadData()
+                        lastLoadTime = Date()
+                    }
+                }
             }
         }
     }
@@ -709,6 +722,14 @@ struct ProfileView: View {
     // MARK: - Data
 
     private func loadData() async {
+        // Only show the skeleton on the very first load — on refresh, keep the
+        // existing data visible. Profile is the "biggest" view (5 endpoints),
+        // so this is where skeleton flashes were most jarring.
+        let firstLoad = profile == nil && metrics.isEmpty && labs.isEmpty && supplements.isEmpty
+        if firstLoad {
+            isLoading = true
+        }
+
         do {
             async let profileResp: APIResponse<UserProfile> = apiService.get("/profile")
             async let targetsResp: APIResponse<UserTargets> = apiService.get("/targets")
@@ -728,8 +749,16 @@ struct ProfileView: View {
             if let urlStr = p.data?.avatarUrl, let url = URL(string: urlStr), avatarImage == nil {
                 await loadAvatarFromURL(url)
             }
+        } catch let error as APIError where error.isCancelled {
+            // Silently ignore cancelled requests (tab switches, background transitions)
+            isLoading = false
         } catch {
             isLoading = false
+            // On refresh, keep cached data and log. On first load there's nothing
+            // to show, so clearing isLoading reveals an empty state but no alarm.
+            if !firstLoad {
+                print("[ProfileView] refresh failed: \(error)")
+            }
         }
     }
 }

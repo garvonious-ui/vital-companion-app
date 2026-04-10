@@ -109,17 +109,6 @@ struct ExerciseLogEntry: Codable, Identifiable, Sendable {
     let notes: String?
 }
 
-struct ExerciseLogBody: Codable, Sendable {
-    let exercise: String
-    let workoutDate: String
-    let muscleGroup: String?
-    let sets: Int?
-    let reps: String?
-    let weightLbs: Double?
-    let restSec: Int?
-    let notes: String?
-}
-
 // MARK: - Exercise Log (used by WorkoutDetail and WorkoutSession)
 
 struct WorkoutExercise: Codable, Identifiable, Sendable {
@@ -210,21 +199,6 @@ struct NutritionEntry: Codable, Identifiable, Sendable {
     var protein: Double? { proteinG }
     var carbs: Double? { carbsG }
     var fat: Double? { fatG }
-}
-
-// NOTE: This struct is kept for compatibility but should not be used with `apiService.post`.
-// The APIService encoder uses `.convertToSnakeCase`, which silently rewrites camelCase fields
-// (mealType, proteinG, etc.) to snake_case — but the `/nutrition` route expects camelCase, so
-// those fields end up null in the DB. Use `apiService.postRaw` with a `[String: Any]` dictionary
-// instead (see MealFormView.save() and MealAnalysisView.saveMeal() for examples).
-struct NutritionLogBody: Codable, Sendable {
-    let date: String
-    let mealType: String
-    let meal: String
-    let calories: Int?
-    let proteinG: Double?
-    let carbsG: Double?
-    let fatG: Double?
 }
 
 // MARK: - Supplements

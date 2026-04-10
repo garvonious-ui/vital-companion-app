@@ -193,8 +193,9 @@ struct MealFormView: View {
         errorMessage = nil
 
         // Build the body as a raw dictionary so the camelCase keys reach the backend
-        // unmodified. APIService's typed `post` would convert these to snake_case, which
-        // the `/nutrition` route silently drops — see comment on NutritionLogBody.
+        // unmodified. APIService's typed `post(body:)` would convert these to snake_case
+        // via `.convertToSnakeCase`, which the `/nutrition` route silently drops — every
+        // write path in this app must use `postRaw` with a `[String: Any]` dict.
         var body: [String: Any] = [
             "meal": name.trimmingCharacters(in: .whitespaces),
             "mealType": mealType,
