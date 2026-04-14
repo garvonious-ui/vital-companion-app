@@ -11,7 +11,6 @@ struct ProfileView: View {
     @State private var labs: [LabResult] = []
     @State private var supplements: [Supplement] = []
     @State private var isLoading = true
-    @State private var lastLoadTime: Date = .distantPast
     @State private var showChat = false
     @State private var showSignOutConfirm = false
     @State private var showWeightEdit = false
@@ -82,19 +81,12 @@ struct ProfileView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             }
-            .task {
+            .task(id: refreshCoordinator.refreshToken) {
+                // Single refresh source — fires on first appear and every
+                // coordinator bump (post-sync, foreground return). See
+                // TodayView for the full rationale on why `.task(id:)`
+                // replaced the `.task` + `.onChange` + manual-debounce pair.
                 await loadData()
-                lastLoadTime = Date()
-            }
-            .onChange(of: refreshCoordinator.refreshToken) { _, _ in
-                // Central refresh trigger (foreground return, post-sync, etc.).
-                // 3s debounce protects against initial-launch double-fire.
-                if Date().timeIntervalSince(lastLoadTime) > 3 {
-                    Task {
-                        await loadData()
-                        lastLoadTime = Date()
-                    }
-                }
             }
         }
     }

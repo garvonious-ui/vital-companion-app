@@ -24,7 +24,6 @@ struct TodayView: View {
     @State private var animateMetrics = false
     @State private var animateCalories = false
     @State private var recoveryAnimationKey = UUID()
-    @State private var lastLoadTime: Date = .distantPast
 
     private var todayDateString: String {
         formatDate(Date())
@@ -234,21 +233,18 @@ struct TodayView: View {
             } message: {
                 Text("How many hours did you sleep last night?")
             }
-            .task {
+            .task(id: refreshCoordinator.refreshToken) {
+                // Single source of refresh. Fires on first appear AND on every
+                // coordinator bump (foreground return, post-sync). Using
+                // `.task(id:)` (instead of `.task` + a separate `.onChange`
+                // observer with a manual debounce) removes a cold-launch race
+                // where the 3s debounce could eat the post-sync token bump —
+                // TodayView would render yesterday's cached data and never
+                // receive the fresh-data signal. SwiftUI handles per-id task
+                // cancellation automatically; CancellationError is silently
+                // caught inside loadData().
                 await loadData()
-                lastLoadTime = Date()
-            }
-            .onChange(of: refreshCoordinator.refreshToken) { _, _ in
-                // Central refresh trigger (foreground return, post-sync, etc.).
-                // 3s debounce protects against initial-launch double-fire where
-                // `.task` and the post-sync bump can arrive close together.
-                if Date().timeIntervalSince(lastLoadTime) > 3 {
-                    Task {
-                        await loadData()
-                        lastLoadTime = Date()
-                        triggerAnimations()
-                    }
-                }
+                triggerAnimations()
             }
         }
     }
@@ -741,7 +737,6 @@ struct TodayView: View {
         // Sync HealthKit data, then reload and re-animate
         await syncService.sync()
         await loadData()
-        lastLoadTime = Date()
         triggerAnimations()
         HapticManager.success()
     }
@@ -769,7 +764,6 @@ struct TodayView: View {
             let _: SuccessResponse = try await apiService.patchRaw("/metrics", jsonData: jsonData)
             HapticManager.success()
             await loadData()
-            lastLoadTime = Date()
             triggerAnimations()
         } catch {
             print("[TodayView] Failed to save sleep: \(error)")

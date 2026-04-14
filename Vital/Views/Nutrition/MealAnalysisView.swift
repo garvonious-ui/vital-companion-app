@@ -23,6 +23,15 @@ struct MealAnalysisView: View {
     @State private var isSaving = false
     @State private var saveError: String?
     @State private var resultsAppeared = false
+    // Food database swap — identifies which detected item is being replaced.
+    // Using `.sheet(item:)` with an `Identifiable` wrapper ensures the closure
+    // captures the index atomically (same fix pattern as Session 22 MealPrefill).
+    @State private var swapTarget: ItemSwapTarget? = nil
+
+    private struct ItemSwapTarget: Identifiable {
+        let id = UUID()
+        let index: Int
+    }
 
     let onSaved: (() -> Void)?
 
@@ -99,6 +108,20 @@ struct MealAnalysisView: View {
                     Task { await analysisService.analyze(image: image) }
                 }
                 .ignoresSafeArea()
+            }
+            .sheet(item: $swapTarget) { target in
+                // FoodSearchView in selection mode (onFoodSelected non-nil).
+                // The cart bar, "Log manually instead" fallback, and the nested
+                // MealFormView sheet are all gated off. On pick, the callback
+                // fires with scaled macros and the sheet dismisses itself.
+                FoodSearchView(
+                    date: formatDate(Date()),
+                    onSaved: nil,
+                    onFoodSelected: { selection in
+                        applyFoodSelection(selection, toItemAt: target.index)
+                    }
+                )
+                .environment(apiService)
             }
             .onChange(of: selectedPhoto) { _, newItem in
                 guard let newItem else { return }
@@ -360,16 +383,29 @@ struct MealAnalysisView: View {
 
     private func editableItemRow(item: Binding<MealItem>, index: Int) -> some View {
         VStack(spacing: 8) {
-            HStack {
+            HStack(spacing: 10) {
                 TextField("Item name", text: item.name)
                     .font(.subheadline.weight(.medium))
                     .foregroundColor(Brand.textPrimary)
 
                 Spacer()
 
+                // Swap with food database. Tapping opens FoodSearchView in
+                // selection mode; picking a food replaces this row's name +
+                // scaled macros in place and recomputes the top-level totals.
+                Button {
+                    HapticManager.light()
+                    swapTarget = ItemSwapTarget(index: index)
+                } label: {
+                    Image(systemName: "magnifyingglass.circle.fill")
+                        .font(.subheadline)
+                        .foregroundColor(Brand.accent)
+                }
+
                 Button {
                     HapticManager.light()
                     items.remove(at: index)
+                    recomputeTotalsFromItems()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.caption)
@@ -517,6 +553,45 @@ struct MealAnalysisView: View {
         f.dateFormat = "yyyy-MM-dd"
         f.locale = Locale(identifier: "en_US_POSIX")
         return f.string(from: date)
+    }
+
+    // MARK: - Food Database Swap
+
+    /// Replace the item at `index` with `selection`'s name + scaled macros,
+    /// then recompute the top-level totals from the new items array.
+    /// MealSelection uses Double for protein/carbs/fat (grams) while MealItem
+    /// uses Int — round to nearest. Sub-gram precision doesn't matter and the
+    /// UI already displays integers.
+    private func applyFoodSelection(_ selection: MealSelection, toItemAt index: Int) {
+        guard items.indices.contains(index) else { return }
+        var item = items[index]
+        if let brand = selection.brandName, !brand.isEmpty {
+            item.name = "\(brand) \(selection.foodName)"
+        } else {
+            item.name = selection.foodName
+        }
+        item.calories = selection.calories
+        item.proteinG = Int(selection.protein.rounded())
+        item.carbsG   = Int(selection.carbs.rounded())
+        item.fatG     = Int(selection.fat.rounded())
+        items[index] = item
+        recomputeTotalsFromItems()
+        HapticManager.success()
+    }
+
+    /// Recompute the top-level cal/protein/carbs/fat TextFields from the sum
+    /// of the current items array. Called after every swap/remove so the
+    /// totals that will actually be saved always match what the user sees in
+    /// the items list.
+    private func recomputeTotalsFromItems() {
+        let totalCal = items.reduce(0) { $0 + $1.calories }
+        let totalP   = items.reduce(0) { $0 + $1.proteinG }
+        let totalC   = items.reduce(0) { $0 + $1.carbsG }
+        let totalF   = items.reduce(0) { $0 + $1.fatG }
+        calories = "\(totalCal)"
+        protein  = "\(totalP)"
+        carbs    = "\(totalC)"
+        fat      = "\(totalF)"
     }
 }
 

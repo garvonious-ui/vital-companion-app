@@ -62,8 +62,8 @@ import Observation
         return try await execute(request)
     }
 
-    func patchRaw<T: Decodable>(_ path: String, jsonData: Data) async throws -> T {
-        var request = try await buildRequest(path: path, method: "PATCH")
+    func patchRaw<T: Decodable>(_ path: String, jsonData: Data, queryItems: [URLQueryItem]? = nil) async throws -> T {
+        var request = try await buildRequest(path: path, method: "PATCH", queryItems: queryItems)
         request.httpBody = jsonData
         return try await execute(request)
     }

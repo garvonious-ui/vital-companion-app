@@ -5,8 +5,6 @@ struct ActivityView: View {
     @Environment(AuthService.self) var authService
     @Environment(RefreshCoordinator.self) var refreshCoordinator
 
-    @State private var lastLoadTime: Date = .distantPast
-
     @State private var meals: [NutritionEntry] = []
     @State private var targets: UserTargets?
     @State private var workouts: [Workout] = []
@@ -116,30 +114,34 @@ struct ActivityView: View {
                 QuickLogView()
             }
             .sheet(item: $selectedWorkout) { workout in
-                WorkoutDetailView(workout: workout, onDeleted: { deletedId in
-                    // Remove locally so the Recent Workouts list updates
-                    // immediately without waiting for a full refetch.
-                    workouts.removeAll { $0.id == deletedId }
-                })
+                WorkoutDetailView(
+                    workout: workout,
+                    onDeleted: { deletedId in
+                        // Remove locally so the Recent Workouts list updates
+                        // immediately without waiting for a full refetch.
+                        workouts.removeAll { $0.id == deletedId }
+                    },
+                    onUpdated: { updated in
+                        // Replace in place — no refetch, no tab-wide refresh.
+                        // WorkoutDetailView has already applied the patch
+                        // locally via its own @State currentWorkout.
+                        if let i = workouts.firstIndex(where: { $0.id == updated.id }) {
+                            workouts[i] = updated
+                        }
+                    }
+                )
             }
             .fullScreenCover(item: $selectedPlanDay) { day in
                 if let plan = selectedPlan {
                     WorkoutSessionView(plan: plan, day: day)
                 }
             }
-            .task {
+            .task(id: refreshCoordinator.refreshToken) {
+                // Single refresh source — fires on first appear and every
+                // coordinator bump (post-sync, foreground return). See
+                // TodayView for the full rationale on why `.task(id:)`
+                // replaced the `.task` + `.onChange` + manual-debounce pair.
                 await loadData()
-                lastLoadTime = Date()
-            }
-            .onChange(of: refreshCoordinator.refreshToken) { _, _ in
-                // Central refresh trigger (foreground return, post-sync, etc.).
-                // 3s debounce protects against initial-launch double-fire.
-                if Date().timeIntervalSince(lastLoadTime) > 3 {
-                    Task {
-                        await loadData()
-                        lastLoadTime = Date()
-                    }
-                }
             }
         }
     }
