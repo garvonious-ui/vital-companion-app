@@ -435,9 +435,62 @@
 - [ ] Fill in contact list in `breach-response-plan.md` (legal counsel, cyber insurance, emergency contacts)
 - [ ] Set up monitoring/alerting (Sentry for Vercel, Supabase Logflare, Anthropic spend alerts)
 - [ ] Apple's App Store Connect API "Request Access" (still deferred — 5-minute click)
-- [ ] App Store screenshots
+- [x] App Store screenshots — captured 8 shots in Session 26 (Today, AI Chat, Workout Detail, Activity, Meal Scan results, Meal Scan analyzing, Labs, Profile). Still need to finalize Profile retake (optional) after build 25 is on device.
 - [ ] App Store description (re-run clinical-language grep before submitting)
 - [ ] Test onboarding with a fresh account
+- [ ] Submit to App Store
+
+### Session 26 — Iteration day (builds 22–25)
+#### Build 22: keyboard dismissal across all forms
+- [x] New `Vital/Views/Components/KeyboardModifiers.swift` — `.dismissKeyboardOnDrag()`, `.keyboardToolbarDone()`, and imperative `KeyboardHelper.dismiss()` helpers
+- [x] Applied to 15 TextField-bearing views (ChatView, nutrition forms, workout forms, onboarding, auth, profile, water quick-add)
+- [x] Fixes the "swipe-down dismisses the sheet and destroys my form state" bug — `scrollDismissesKeyboard(.interactively)` catches the gesture before the sheet's pull-to-dismiss
+- [x] Also adds a "Done" button on the keyboard accessory bar for any TextField (ChatView input bar was the critical one)
+- [x] **TestFlight build 22 uploaded**
+
+#### Build 23: loadExercises URL bug (the REAL "AddExercise doesn't save" root cause)
+- [x] Diagnosis: saves were landing in DB fine — READS were silently 404ing
+- [x] `URL.appendingPathComponent("/exercises?date=X")` percent-encodes the `?` to `%3F`, producing a malformed URL that Next.js can't route
+- [x] The `// Non-critical` catch in `loadExercises()` silently swallowed every GET since the feature shipped
+- [x] Fix: use `queryItems` parameter on `apiService.get` instead of embedding `?` in the path string
+- [x] Replaced the silent catch with a `print()` log so future failures aren't invisible
+- [x] **TestFlight build 23 uploaded**
+
+#### Build 23 backend: num() helper + AI chat formatting
+- [x] New `num()` helper in `src/lib/data.ts` — casts Postgres numeric column values (returned as strings by postgrest-js) to JS Number
+- [x] Applied to every fetch function that touches a numeric column: fetchExerciseLog, fetchDailyMetrics (11 cols), fetchLabResults (5 cols), fetchNutritionLog (4 cols), fetchProfile (2 cols), fetchProgressPhotos (3 cols), fetchUserTargets (2 cols)
+- [x] Updated `UserTargets` type — `sleepHoursMin/sleepHoursMax` are now `number | null` to match DB reality and accept `num()`'s return type
+- [x] AI chat system prompt rewritten for scannable formatting: bold headers, bullets (`•`), short paragraphs, blank lines between sections, ~250 word cap, example response embedded
+- [x] Deployed to Vercel prod
+
+#### Build 24: Edit/delete individual exercises
+- [x] Backend: extended `updateExerciseLogEntry` to accept `exercise` name and `muscleGroup` (previously only sets/reps/weight/rest/notes were patchable)
+- [x] iOS: `AddExerciseView` is now dual-mode (add + edit) via optional `existingEntry: ExerciseLogEntry?` parameter
+- [x] iOS: exercise rows in WorkoutDetailView are now tappable → open edit sheet with fields prefilled
+- [x] iOS: Delete Exercise button at bottom of edit sheet (destructive + confirmation dialog)
+- [x] iOS: `onSaved` / `onDeleted` callbacks for in-place list updates
+- [x] **TestFlight build 24 uploaded**
+
+#### Build 25: First-name-only in ProfileView
+- [x] Screenshot review surfaced that ProfileView showed "Louis Cesario" while TodayView greeting already showed "Louis" — inconsistent
+- [x] New `firstNameOnly(_:)` private helper in ProfileView — matches the TodayView greeting logic and Session 25 compliance decision
+- [x] Applied to profile header Text() — initials logic left alone (uses first + last initial intentionally)
+- [x] **TestFlight build 25 uploaded**
+
+#### App Store Connect compliance wizard (non-code)
+- [x] Walked through the "Missing Compliance" dialog on build 25 — answered "None of the algorithms mentioned above" (option 4) since Vital uses only Apple-provided encryption (URLSession HTTPS, Supabase SDK, Data Protection, Keychain)
+
+### Pending from Session 26 (pre-submission polish)
+- [ ] **Logo** — current app icon is a placeholder emerald V (noted in Polish & Ship section); need a real designed logo
+- [ ] **Splash page** — have an animated splash screen from Session 23 but may want to revisit for App Store polish
+- [ ] **Icon** — real designed icon (same item as logo — App Icon in Xcode asset catalog)
+- [ ] **New name** — Lou is considering a rename (Vesper was floated in Session 17, reverted). Still undecided.
+- [ ] **Screenshots — Profile retake** (optional) — current shot shows "Louis Cesario", build 25 fixes it to "Louis". Retake after updating via TestFlight, OR ship as-is.
+- [ ] **Screenshots — Today retake** (done) — TestFlight breadcrumb was visible in the first take. Retake completed with clean status bar.
+- [ ] **Test Delete Account** on a throwaway account — same item as the Session 25 carry, still not done, still HIGH priority before submission
+- [ ] **Test Oura onboarding** flow — end-to-end OAuth connect from iOS, verify data syncs
+- [ ] **Test full onboarding** with a fresh account — the "Test onboarding with a fresh account" item from Session 24+, still not done
+- [ ] App Store description copy (app name, subtitle, keywords, promo text, long description, support URL, marketing URL)
 - [ ] Submit to App Store
 
 ### Manual Data Entry
