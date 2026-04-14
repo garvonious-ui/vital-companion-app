@@ -29,6 +29,10 @@ struct WorkoutDetailView: View {
     @State private var showDeleteConfirm = false
     @State private var isDeleting = false
     @State private var showEditSheet = false
+    /// When non-nil, presents the exercise edit sheet. Uses `.sheet(item:)`
+    /// so the closure captures the specific entry atomically (Session 22
+    /// stale-prefill pattern).
+    @State private var editingExercise: ExerciseLogEntry? = nil
 
     /// Only Manual / Quick Log workouts are editable. Apple Watch, Oura,
     /// Whoop, Garmin workouts stay read-only because their values are
@@ -114,6 +118,25 @@ struct WorkoutDetailView: View {
                 Task { await loadExercises() }
             }) {
                 AddExerciseView(workoutDate: workoutDate)
+            }
+            .sheet(item: $editingExercise) { entry in
+                AddExerciseView(
+                    workoutDate: workoutDate,
+                    existingEntry: entry,
+                    onSaved: {
+                        // Reload so the row reflects the new values.
+                        // Using loadExercises() rather than in-place mutation
+                        // because the PATCH body can change name + muscle
+                        // group, and we don't echo those back from the server.
+                        Task { await loadExercises() }
+                    },
+                    onDeleted: {
+                        // Remove locally so the row disappears immediately.
+                        // Parent's exercises array is the source of truth for
+                        // the list; no fetch needed.
+                        exercises.removeAll { $0.id == entry.id }
+                    }
+                )
             }
             .sheet(isPresented: $showEditSheet) {
                 WorkoutEditView(workout: currentWorkout) { updated in
@@ -321,42 +344,56 @@ struct WorkoutDetailView: View {
     }
 
     private func exerciseRow(_ entry: ExerciseLogEntry) -> some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(entry.exercise)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundColor(Brand.textPrimary)
+        // Tappable — opens the dual-mode AddExerciseView in edit mode via
+        // the `.sheet(item: $editingExercise)` handler. Edit + delete both
+        // live inside that sheet (matches MealFormView pattern).
+        Button {
+            HapticManager.light()
+            editingExercise = entry
+        } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(entry.exercise)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundColor(Brand.textPrimary)
 
-                HStack(spacing: 8) {
-                    if let sets = entry.sets {
-                        Text("\(sets) sets")
+                    HStack(spacing: 8) {
+                        if let sets = entry.sets {
+                            Text("\(sets) sets")
+                        }
+                        if let reps = entry.reps, !reps.isEmpty {
+                            Text("× \(reps)")
+                        }
+                        if let weight = entry.weightLbs, weight > 0 {
+                            Text("@ \(Int(weight)) lbs")
+                        }
                     }
-                    if let reps = entry.reps, !reps.isEmpty {
-                        Text("× \(reps)")
-                    }
-                    if let weight = entry.weightLbs, weight > 0 {
-                        Text("@ \(Int(weight)) lbs")
-                    }
+                    .font(.caption.monospacedDigit())
+                    .foregroundColor(Brand.textSecondary)
                 }
-                .font(.caption.monospacedDigit())
-                .foregroundColor(Brand.textSecondary)
-            }
 
-            Spacer()
+                Spacer()
 
-            if let muscle = entry.muscleGroup, !muscle.isEmpty {
-                Text(muscle)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(Brand.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Brand.secondary.opacity(0.12))
-                    .cornerRadius(4)
+                if let muscle = entry.muscleGroup, !muscle.isEmpty {
+                    Text(muscle)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(Brand.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Brand.secondary.opacity(0.12))
+                        .cornerRadius(4)
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.caption2)
+                    .foregroundColor(Brand.textMuted)
             }
+            .padding(10)
+            .background(Brand.elevated)
+            .cornerRadius(10)
+            .contentShape(Rectangle())
         }
-        .padding(10)
-        .background(Brand.elevated)
-        .cornerRadius(10)
+        .buttonStyle(.plain)
     }
 
     // MARK: - Notes
@@ -425,13 +462,24 @@ struct WorkoutDetailView: View {
     }
 }
 
-// MARK: - Add Exercise View
+// MARK: - Add/Edit Exercise View
+// Despite the name, this view handles BOTH creation (existingEntry == nil) and
+// editing (existingEntry != nil) of a single exercise log row. Same pattern
+// MealFormView uses — one form, two modes, initialized from an optional entry.
 
 struct AddExerciseView: View {
     @Environment(APIService.self) var apiService
     @Environment(\.dismiss) var dismiss
 
     let workoutDate: String
+    /// When non-nil, the view runs in EDIT mode — fields are prefilled,
+    /// save calls PATCH instead of POST, and a Delete button is shown.
+    let existingEntry: ExerciseLogEntry?
+    /// Fired after a successful save (add or edit). Parents use this to
+    /// update the exercises array in place without a full reload.
+    var onSaved: (() -> Void)? = nil
+    /// Fired after a successful delete. Only relevant in edit mode.
+    var onDeleted: (() -> Void)? = nil
 
     @State private var library: [LibraryExercise] = []
     @State private var searchText = ""
@@ -441,7 +489,29 @@ struct AddExerciseView: View {
     @State private var reps = ""
     @State private var weight = ""
     @State private var isSaving = false
+    @State private var isDeleting = false
     @State private var errorMessage: String?
+    @State private var showDeleteConfirm = false
+
+    init(
+        workoutDate: String,
+        existingEntry: ExerciseLogEntry? = nil,
+        onSaved: (() -> Void)? = nil,
+        onDeleted: (() -> Void)? = nil
+    ) {
+        self.workoutDate = workoutDate
+        self.existingEntry = existingEntry
+        self.onSaved = onSaved
+        self.onDeleted = onDeleted
+        _searchText = State(initialValue: existingEntry?.exercise ?? "")
+        _exerciseName = State(initialValue: existingEntry?.exercise ?? "")
+        _muscleGroup = State(initialValue: existingEntry?.muscleGroup ?? "")
+        _sets = State(initialValue: existingEntry?.sets.map { "\($0)" } ?? "")
+        _reps = State(initialValue: existingEntry?.reps ?? "")
+        _weight = State(initialValue: existingEntry?.weightLbs.map { "\(Int($0))" } ?? "")
+    }
+
+    private var isEditing: Bool { existingEntry != nil }
 
     private var filteredLibrary: [LibraryExercise] {
         if searchText.isEmpty { return library }
@@ -542,7 +612,7 @@ struct AddExerciseView: View {
                                 if isSaving {
                                     ProgressView().tint(.white)
                                 } else {
-                                    Text("Add Exercise")
+                                    Text(isEditing ? "Save Changes" : "Add Exercise")
                                         .font(.subheadline.weight(.semibold))
                                 }
                             }
@@ -552,20 +622,57 @@ struct AddExerciseView: View {
                             .background(exerciseName.isEmpty ? Brand.textMuted : Brand.accent)
                             .cornerRadius(12)
                         }
-                        .disabled(exerciseName.isEmpty || isSaving)
+                        .disabled(exerciseName.isEmpty || isSaving || isDeleting)
+
+                        // Delete — only in edit mode. Destructive, at the
+                        // bottom so it's deliberately out of the default
+                        // tap path. Confirmation dialog prevents fat-fingers.
+                        if isEditing {
+                            Button(role: .destructive) {
+                                showDeleteConfirm = true
+                            } label: {
+                                HStack(spacing: 6) {
+                                    if isDeleting {
+                                        ProgressView().tint(Brand.critical).scaleEffect(0.8)
+                                    } else {
+                                        Image(systemName: "trash")
+                                    }
+                                    Text("Delete Exercise")
+                                }
+                                .font(.subheadline.weight(.medium))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .foregroundColor(Brand.critical)
+                            }
+                            .disabled(isSaving || isDeleting)
+                            .padding(.top, 4)
+                        }
                     }
                     .padding(16)
                 }
                 .dismissKeyboardOnDrag()
             }
-            .navigationTitle("Add Exercise")
+            .navigationTitle(isEditing ? "Edit Exercise" : "Add Exercise")
             .navigationBarTitleDisplayMode(.inline)
             .keyboardToolbarDone()
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
                         .foregroundColor(Brand.accent)
+                        .disabled(isSaving || isDeleting)
                 }
+            }
+            .confirmationDialog(
+                "Delete this exercise?",
+                isPresented: $showDeleteConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    Task { await deleteExercise() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This can't be undone.")
             }
             .task {
                 await loadLibrary()
@@ -588,35 +695,72 @@ struct AddExerciseView: View {
         isSaving = true
         errorMessage = nil
 
-        // Build the body as a raw dictionary using the backend's camelCase field
-        // names directly. APIService's typed `post(body:)` would convert these
-        // to snake_case via `.convertToSnakeCase`, and `createExerciseLogEntry`
-        // in data.ts reads camelCase — silently dropping workout_date,
-        // muscle_group, weight_lbs, and rest_sec on every previous save.
-        var body: [String: Any] = [
-            "exercise": exerciseName,
-            "workoutDate": workoutDate,
-        ]
-        if !muscleGroup.isEmpty { body["muscleGroup"] = muscleGroup }
-        if let s = Int(sets) { body["sets"] = s }
-        if !reps.isEmpty { body["reps"] = reps }
-        if let w = Double(weight) { body["weightLbs"] = w }
+        // Raw-dict bodies for both POST and PATCH — APIService's typed
+        // `post(body:)` would convert keys to snake_case via
+        // `.convertToSnakeCase`, and data.ts reads camelCase. Use postRaw/
+        // patchRaw with a literal dict to bypass the encoder entirely.
+        if let existing = existingEntry {
+            // EDIT — PATCH /exercises with id in body
+            var body: [String: Any] = ["id": existing.id]
+            body["exercise"] = exerciseName
+            body["muscleGroup"] = muscleGroup // empty string is fine — backend uses !== undefined
+            if let s = Int(sets) { body["sets"] = s }
+            body["reps"] = reps
+            if let w = Double(weight) { body["weightLbs"] = w }
+            do {
+                let jsonData = try JSONSerialization.data(withJSONObject: body)
+                let _: SuccessResponse = try await apiService.patchRaw("/exercises", jsonData: jsonData)
+                HapticManager.success()
+                isSaving = false
+                onSaved?()
+                dismiss()
+            } catch {
+                HapticManager.error()
+                errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+                isSaving = false
+            }
+        } else {
+            // ADD — POST /exercises
+            var body: [String: Any] = [
+                "exercise": exerciseName,
+                "workoutDate": workoutDate,
+            ]
+            if !muscleGroup.isEmpty { body["muscleGroup"] = muscleGroup }
+            if let s = Int(sets) { body["sets"] = s }
+            if !reps.isEmpty { body["reps"] = reps }
+            if let w = Double(weight) { body["weightLbs"] = w }
+            do {
+                let jsonData = try JSONSerialization.data(withJSONObject: body)
+                let _: SuccessResponse = try await apiService.postRaw("/exercises", jsonData: jsonData)
+                HapticManager.success()
+                isSaving = false
+                onSaved?()
+                dismiss()
+            } catch {
+                HapticManager.error()
+                errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+                isSaving = false
+            }
+        }
+    }
 
+    private func deleteExercise() async {
+        guard let existing = existingEntry else { return }
+        isDeleting = true
+        errorMessage = nil
         do {
-            let jsonData = try JSONSerialization.data(withJSONObject: body)
-            let _: SuccessResponse = try await apiService.postRaw("/exercises", jsonData: jsonData)
+            let _: SuccessResponse = try await apiService.delete(
+                "/exercises",
+                queryItems: [URLQueryItem(name: "id", value: existing.id)]
+            )
             HapticManager.success()
-            isSaving = false
-            // Dismiss so the parent's onDismiss handler reloads the exercise
-            // list. User wasn't seeing saved exercises before because the form
-            // just reset and they had no feedback the save worked. If they
-            // want to add another, they tap + again — one extra tap, but a
-            // clear mental model of "save → see the result".
+            isDeleting = false
+            onDeleted?()
             dismiss()
         } catch {
             HapticManager.error()
             errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
-            isSaving = false
+            isDeleting = false
         }
     }
 
