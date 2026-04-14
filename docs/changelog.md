@@ -1,5 +1,310 @@
 # Changelog — Vital Companion App
 
+## 2026-04-14 — Session 25
+
+Compliance audit session. Started immediately after Session 24's wrap with the user's request:
+
+> "Review the Vital codebase for health data regulatory compliance and implement fixes where needed. [...] We are a consumer wellness app (not a HIPAA covered entity), but we ARE subject to the FTC Health Breach Notification Rule because we collect identifiable health information from multiple sources (HealthKit, Oura, user-entered lab results). We also need to stay clearly outside FDA Software as Medical Device classification."
+
+Scope: full audit of all 7 requirement areas (encryption, Claude API data flow, AI guardrails, privacy policy, deletion, breach response, App Store metadata), implement fixes, ship as build 21.
+
+End state: **TestFlight build 21 uploaded** with compliance fixes across 7 backend files, 5 iOS files, 1 DB migration, and 3 new documentation files. No breaking changes to existing features.
+
+**IMPORTANT CAVEAT — not legal advice.** Everything in this session is good-faith self-audit work by a solo developer using LLM tooling. The breach response plan, privacy policy revisions, and compliance status doc need to be reviewed by qualified legal counsel before App Store submission. Flagged prominently inside both new docs.
+
+### Exploration findings
+
+Three parallel Explore agents mapped the current state across both repos and the Supabase project. What was already compliant (more than expected):
+
+- ✅ Supabase RLS enabled on all 13 health data tables with `auth.uid() = user_id` policies (verified via `pg_policies` query)
+- ✅ TLS in transit everywhere (no `http://` URLs found)
+- ✅ System prompt already had baseline FDA guardrails ("Never diagnose conditions", "If asked about medications or prescriptions, defer to their doctor", "You are NOT a doctor")
+- ✅ Terms of Service includes appropriate medical disclaimer ("NOT a medical device")
+- ✅ HealthKit usage descriptions in Info.plist are strong and purpose-specific
+- ✅ No third-party analytics SDKs capturing chat responses (no Sentry/PostHog/Mixpanel)
+- ✅ No clinical / diagnostic language in landing page marketing copy
+- ✅ Token storage delegated to Supabase Swift SDK (Keychain via platform defaults)
+- ✅ Privacy policy existed at `/privacy` with most required sections
+
+What was broken / missing (more than expected):
+
+- 🔴 **No delete-account flow** — no UI, no endpoint, no edge function. **App Store Guideline 5.1.1(v) violation** — in-app account deletion has been required since 2022. This alone was a submission blocker.
+- 🔴 **No FK CASCADE on health tables** — only `chat_messages.conversation_id → chat_conversations` cascaded. Every other health data table had NO foreign key to `auth.users` at all (linked only by `user_id` column convention). Deleting a user via `supabase.auth.admin.deleteUser()` would orphan all their data.
+- 🔴 **Privacy policy claimed Anthropic "is not retained by Anthropic"** — inaccurate. Anthropic's standard API retains prompts up to 30 days for abuse monitoring unless enrolled in their Zero Data Retention program. **FTC Section 5 exposure** (deceptive practice).
+- 🔴 FatSecret (used for food database search) not listed in privacy policy's third-party services
+- 🔴 Oura Ring mentioned in ToS but not in the privacy policy's Data Sharing section
+- 🔴 No FTC 60-day breach notification commitment in the privacy policy
+- 🔴 No breach response plan document
+- 🟡 Full `display_name` (possibly with surname) sent to Anthropic in every chat prompt
+- 🟡 No visible in-app disclaimer in iOS `ChatView` (ToS covers it legally, but users never see it)
+- 🟡 No "consult your provider" disclaimer on iOS `LabsView`
+- 🟡 Chat history stored as unencrypted JSON in `Documents/chat_history.json` without iOS Data Protection
+- 🟡 Full conversation history sent to Claude on every message (PHI surface area concern, not a blocker)
+
+### User decisions (via AskUserQuestion)
+
+Four forks I couldn't decide without input:
+
+1. **AI prompt PII handling**: User asked "what's your recco" — I picked **first name only** (strip surname, keep personalization). Rationale: industry standard for consumer wellness (WHOOP/Oura/Levels all do this), preserves the "Hi Lou" UX, trivial one-liner, easy escape hatch to full anonymization later.
+2. **Delete Account friction**: User picked **double confirmation** (Tap → dialog → type-DELETE-to-confirm screen). Matches GitHub/Gmail pattern.
+3. **`SUPABASE_SERVICE_ROLE_KEY` in Vercel**: User said "No / not sure" — I initially treated as a prerequisite, then found `src/app/api/profile/route.ts` already references it on line 28 for the onboarding POST path. Since onboarding works in prod, the env var is clearly already set. Proceeded without waiting.
+4. **Anthropic retention claim**: User picked **correct the language** (rewrite to accurately describe 30-day retention for safety monitoring + no-training-by-default). Safest posture; still reassuring for users.
+
+### Database migration — `cascade_user_delete_on_health_tables`
+
+Two-step process:
+
+1. **Orphan check before migration** — queried each health table for rows whose `user_id` doesn't match any `auth.users.id`. Result: **zero orphans on all 14 tables**. Safe to apply VALID (not NOT VALID) constraints.
+2. **Apply CASCADE FKs** — initial migration attempt errored out on re-creating the pre-existing `profiles_id_fkey` (Supabase default, already had CASCADE), but the other 13 ALTER TABLE statements ran before the error (non-transactional migration execution in Supabase MCP). Confirmed via `pg_constraint` query that all 14 tables now have CASCADE FKs. Re-applied a clean idempotent version of the migration using a `DO $$ ... IF NOT EXISTS ... END $$;` block so it's safe to re-run and properly registers in the migration history.
+
+Final state: **every health data table has `ON DELETE CASCADE` foreign key to `auth.users.id`**. Tables covered: `profiles` (via `id`), `action_items`, `chat_conversations`, `chat_messages`, `daily_metrics`, `device_connections`, `exercise_log`, `lab_results`, `nutrition_log`, `progress_photos`, `saved_workout_plans`, `supplements`, `user_targets`, `workouts`.
+
+### Backend — account deletion
+
+**`src/lib/supabase.ts`** — new `createAdminClient()` helper using `SUPABASE_SERVICE_ROLE_KEY`. Bypasses RLS, exposes auth admin API, disables auto-refresh + session persistence (not needed server-side). Only for server code paths that must bypass user-scoped access — documented in a comment block with explicit warning.
+
+**`src/lib/data.ts`** — new `deleteUserAccount(userId)`. Two-step:
+
+1. Clean `avatars/{userId}.jpg` from the avatars storage bucket. Storage does NOT participate in FK CASCADE — we explicitly delete. Missing file is non-fatal (user may never have uploaded). Real errors logged but don't block the auth delete.
+2. Call `admin.auth.admin.deleteUser(userId)`. Because of the CASCADE migration, this single call triggers deletion of every row across all 14 health tables in the same transaction.
+
+**`src/app/api/profile/route.ts`** — new `DELETE` handler. Supports Bearer (iOS) + cookie (web) auth, mirroring the existing POST handler pattern. Critical security property: **the handler derives the user ID from the authenticated token/cookie, NOT from any body field**, so a compromised client can only ever delete its own account — never someone else's. Session 22/23 `.message` error extraction pattern — no more "[object Object]".
+
+### Backend — Claude API data flow minimization
+
+**`src/lib/ai-context.ts`** — three changes:
+
+1. **File-level compliance comment block** at the top of the file documenting:
+   - Every field that flows to Anthropic on every chat prompt (first name only, computed age, sex/height/weight, goals/conditions/medications, daily targets, last 7 days metrics, recent 30 lab results, supplements, last 7 days workouts/nutrition, conversation history)
+   - Every field that deliberately never leaves (email, raw DOB, surname, phone, address, Supabase UUID)
+   - Anthropic's retention policy (up to 30 days for abuse monitoring, not used for training by default)
+   - Change-review policy ("CHANGES TO THIS MODULE REQUIRE A COMPLIANCE REVIEW")
+
+2. **`firstNameOnly()` helper** — strips `display_name` to its first whitespace-delimited token. "Lou Cesario" → "Lou". "Teresa" → "Teresa". Empty/whitespace → "User". Called inside `buildSystemPrompt` so no upstream caller needs to change.
+
+3. **Removed `Name:` line from the `## Profile` context block** in `buildHealthContext`. Previously the full `display_name` was injected into the health context string sent to Anthropic. Now only age/sex/height/weight/goals/conditions/medications are in that block. The only place the name appears at all is the system prompt's opening line ("You are a health and wellness assistant for Lou") via `firstNameOnly()`.
+
+4. **New hard rule in the system prompt**: "When discussing any lab value that is flagged Borderline, Out of Range, or Critical, always close that part of your response with a one-sentence reminder to discuss the result with their healthcare provider for clinical interpretation. This is a hard rule — do not omit it even if the user has heard it before." This is the Claude-side belt to the iOS-side suspenders (LabsView disclaimer footer).
+
+### Backend — privacy policy corrections
+
+**`src/app/privacy/page.tsx`** — five surgical edits:
+
+1. **Anthropic retention language** — completely rewritten. The old text said "data is sent to generate recommendations and is not retained by Anthropic" which is technically incorrect and creates FTC Section 5 exposure. New text:
+
+   > "Anthropic — AI-powered health insights via the Claude API. The AI chat feature, meal photo analysis, supplement label scanner, and lab parser all send relevant user data to Anthropic to generate responses. Per Anthropic's standard API terms, prompts and completions may be retained by Anthropic for up to 30 days for safety monitoring, and are **not** used to train Anthropic's AI models by default."
+
+   Plus a link to Anthropic's own privacy policy.
+
+2. **Added FatSecret to Data Sharing section** with explicit scope — "only your search query and the selected food item are exchanged with FatSecret. No user health data, name, or identifier is sent to FatSecret."
+
+3. **Added Oura Ring** to the third-party services list with explicit scope. (Previously only mentioned in the ToS.)
+
+4. **Added a new "Data Breach Notification" section** — commits to FTC HBNR 60-day user notification with 500-user FTC + prominent-media notification threshold. Links to the FTC HBNR rule.
+
+5. **Tightened "Data Retention and Deletion" section** — previously vague ("as long as you have an active account"), now explicit:
+   - Users can delete their account from the iOS app (Profile → Delete Account), no support request needed
+   - Lists exactly what gets deleted on account delete
+   - Commits to 30-day full deletion window
+   - States "immediate, cascading, and irreversible"
+
+**Also expanded "Data We Collect"** with new subsections for Lab Results (now discloses Anthropic parsing), Oura Ring Data, Meal/Supplement Photos, and Chat History (with mention of iOS Data Protection caching).
+
+Updated "Last updated" date to 2026-04-14.
+
+### Backend — breach response plan (new doc)
+
+**`docs/breach-response-plan.md`** — first-draft internal incident playbook. Structure:
+
+1. **Purpose + scope** — covers Supabase/Vercel/Anthropic breach scenarios, explicitly out-of-scope for device theft / social engineering
+2. **Detection** — current monitoring sources (Supabase logs, Vercel logs, security advisors, user reports) + recommended additions (Sentry, Logflare, Anthropic spend alerts)
+3. **Immediate response 0-24h** — triage checklist: confirm it's real, contain blast radius, rotate credentials immediately (Supabase service role + Anthropic API key + Oura secret + FatSecret secret), force user session expiration, preserve evidence, start incident log
+4. **Contact list template** — Incident Commander, legal counsel (TODO), cyber insurance (TODO), vendor support contacts
+5. **Assessment 24-72h** — scope questions (who was affected, what data, when, root cause, is it still exploitable), root cause analysis template
+6. **User notification (60-day FTC window)** — email template covering all 16 CFR 318.6 required elements (date of discovery, description of data involved, plain-language description of what happened, user protection steps, Vital's remediation steps, contact info, third-party identity if known)
+7. **Regulatory notification** — FTC HBNR form workflow, 500-user media threshold, state AG notification (flagged as needing counsel review — statutes vary by state)
+8. **Post-incident** — remediation, internal retrospective, optional public write-up
+9. **Annual review cadence**
+
+Every section has TODO placeholders where legal counsel input is needed. Full doc is about 6,000 words — intentional, so it's usable as a playbook in a real incident.
+
+### Backend — compliance status doc (new)
+
+**`docs/compliance-status.md`** — full audit report. Per-requirement sections:
+
+- Requirement 1 — Data encryption (RLS, TLS, disk, tokens, local storage)
+- Requirement 2 — Claude API data flow
+- Requirement 3 — AI response guardrails (FDA)
+- Requirement 4 — Privacy policy
+- Requirement 5 — Data deletion / user rights
+- Requirement 6 — Breach response readiness
+- Requirement 7 — App Store metadata
+
+Each section has: status (✅/🟡/🔴), what was in place before, what was fixed this session (with file references), what's still open (with TODO markers for legal counsel).
+
+Top-level disclaimer block makes clear this is a solo-developer self-audit using LLM tooling and must be reviewed by qualified legal counsel before any real reliance. Explicitly states: "Nothing here should be interpreted as legal advice."
+
+Bottom section lists open questions requiring counsel review: final privacy policy language, breach response plan contact list + state matrix, Anthropic retention claim freshness, CCPA alignment, ToS AI disclaimer enforceability, user notification template review, state AG notification.
+
+Plus a cyber insurance recommendation ($1-2K/year for $1M aggregate, typical for solo dev consumer health app).
+
+### iOS — Delete Account flow
+
+**`Vital/Views/Profile/DeleteAccountConfirmView.swift`** (new file, 157 lines). Full-screen sheet structure:
+
+1. Warning icon + headline + "This cannot be undone" subtitle
+2. Card listing exactly what will be deleted (profile, HealthKit sync history, labs, workouts, nutrition, supplements, chat history, photo, device tokens, account itself)
+3. Note that Apple Health itself is not affected — only the synced copies in Vital
+4. Text field labeled "To confirm, type DELETE in the box below"
+5. Destructive "Permanently Delete Account" button — disabled until the text field exactly matches "DELETE" (case-sensitive)
+6. Interactive dismissal disabled while `isDeleting` so the user can't swipe away mid-operation
+
+On tap of the final button:
+- Medium haptic
+- `apiService.delete("/profile")` (uses the existing `delete` helper with no queryItems — the backend derives identity from auth)
+- On success: success haptic → `authService.signOut()` → ContentView's auth gate flips to LoginView → sheet tears down naturally (no explicit dismiss needed)
+- On failure: error haptic → show error message via `(error as? APIError)?.errorDescription` (Session 23 pattern) → button re-enables
+
+**`Vital/Views/Profile/ProfileView.swift`** — added:
+- `showDeleteAccountConfirm` and `showDeleteAccountSheet` state vars
+- New Delete Account button at the bottom of the settings card (below Sign Out, separated by divider), destructive-styled with trash.fill icon
+- `.confirmationDialog` "Delete your account?" with Continue (destructive) button that flips `showDeleteAccountSheet = true`
+- `.sheet(isPresented: $showDeleteAccountSheet) { DeleteAccountConfirmView() }`
+
+Double-confirmation pattern: tap Delete Account → dialog with Continue → sheet requiring type-DELETE → final button.
+
+### iOS — AI wellness disclaimers
+
+**`Vital/Views/More/ChatView.swift`** — two additions:
+
+1. **Persistent disclaimer footer** just above the input bar. Small text (11pt): "ℹ Not medical advice. Tap for details." Uses `Brand.textMuted` for unobtrusive styling. Tap opens the sheet.
+2. **Full disclaimer sheet** (`aiDisclaimerSheet` computed property). Sections:
+   - About AI Health Chat — "Vital is a wellness tracking tool. It is not a medical device, and the AI health chat is not a substitute for professional medical advice, diagnosis, or treatment."
+   - What the AI can do — explain metrics, highlight trends, suggest lifestyle adjustments, help prep for doctor conversations
+   - What the AI cannot do — diagnose conditions, recommend medications, replace professional care, interpret labs clinically
+   - Your data — points at the privacy policy for Anthropic disclosure details
+   - Emergency callout — "If you think you're having a medical emergency, call 911 or your local emergency number immediately. Do not use Vital for emergency care." Styled with `Brand.critical` background.
+
+**`Vital/Views/More/LabsView.swift`** — added a static disclaimer footer at the bottom of the lab categories list. Not tappable (no sheet), just a passive reminder with info icon:
+
+> "Lab results in Vital are for informational tracking only. Discuss any flagged or out-of-range results with your healthcare provider. Vital is not a medical device and does not provide medical advice."
+
+Styled with `Brand.card.opacity(0.5)` background + `caption2` font to be noticeable but not visually competing with the lab data itself.
+
+### iOS — Chat history file protection
+
+**`Vital/Services/ChatHistoryManager.swift`** — one-line change with three-line comment:
+
+```swift
+try data.write(
+    to: Self.fileURL,
+    options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
+)
+```
+
+`.completeFileProtectionUntilFirstUserAuthentication` is the right protection class for this file:
+
+- Stricter than iOS default (which is effectively `.none`)
+- Unreadable by other apps
+- Unreadable before first unlock after device reboot
+- **Compatible with background sync** (unlike `.completeFileProtection` which would break background reads while locked)
+- Safe for a file that's only written by foreground user action (chat messages)
+
+Grepped the rest of the iOS codebase for other `Documents/` writes — only `DocumentPicker.swift` uses it, and that's a UIKit picker delegate, not a persistent write. No other local storage files need the same treatment.
+
+### Files Created (iOS)
+- `Vital/Views/Profile/DeleteAccountConfirmView.swift`
+
+### Files Modified (iOS)
+- `Vital/Views/Profile/ProfileView.swift` — Delete Account button + dialog + sheet presentation
+- `Vital/Views/More/ChatView.swift` — disclaimer footer + full disclaimer sheet + state vars
+- `Vital/Views/More/LabsView.swift` — disclaimer footer below categories
+- `Vital/Services/ChatHistoryManager.swift` — file protection options on persist()
+- `project.yml` — CURRENT_PROJECT_VERSION 20 → 21
+- `Vital.xcodeproj/project.pbxproj` — regenerated by xcodegen
+
+### Files Created (Web Dashboard)
+- `docs/breach-response-plan.md`
+- `docs/compliance-status.md`
+
+### Files Modified (Web Dashboard)
+- `src/lib/supabase.ts` — new `createAdminClient()` helper with service-role warning block
+- `src/lib/data.ts` — new `deleteUserAccount(userId)`
+- `src/app/api/profile/route.ts` — new `DELETE` handler (Bearer + cookie auth, `.message` error extraction)
+- `src/lib/ai-context.ts` — firstNameOnly helper, file-level compliance comment, stripped Name from Profile block, lab disclaimer rule in system prompt
+- `src/app/privacy/page.tsx` — Anthropic retention language, FatSecret + Oura, breach notification section, retention tightening, expanded data collection section
+
+### Database Migrations
+- `cascade_user_delete_on_health_tables` — FK CASCADE on 14 health data tables to `auth.users.id`. Idempotent via DO block with `pg_constraint` existence checks. Zero orphans pre-migration.
+
+### Backend Deployments
+- Vercel prod deploy `dpl_CVtHnsqibxLeTdJj9ebWKztcGf3S` — target production, readyState READY
+
+### Bugs Found
+- **No FK constraints on health tables at all.** The initial plan assumed we'd be *modifying* existing FKs to add CASCADE. The `pg_constraint` query revealed the truth: only `chat_messages.conversation_id → chat_conversations` cascaded. Every other health table was linked to `auth.users` purely by `user_id` UUID convention with no constraint at all. Migration needed to ADD the FKs, not alter them.
+- **Privacy policy contained a materially inaccurate claim about Anthropic.** "Not retained by Anthropic" creates FTC Section 5 exposure. Likely written assuming the zero-data-retention program was standard, which it isn't.
+- **Supabase MCP migrations don't run in a transaction.** Initial migration partially committed — 13 of 14 ALTER TABLE statements ran before the `profiles` one errored. Resulting state was actually what I wanted, but it didn't register in the migration history. Fix: idempotent DO block version so re-applying is safe.
+- **Stale SourceKit warnings persist through file edits.** Every edit I made to an existing iOS view produced dozens of "Cannot find type X" warnings in the diagnostics, but xcodebuild compiled cleanly. The indexer doesn't reliably pick up sibling files after edits. Learned to ignore and trust xcodebuild as the source of truth.
+- **`SUPABASE_SERVICE_ROLE_KEY` was already in Vercel env** but I treated it as a prerequisite in the initial plan. User said "No / not sure" but `profile/route.ts` line 28 clearly references it for the existing POST handler which works in prod. Proceeded without waiting.
+
+### Decisions
+- **First-name-only over full anonymization** for AI chat prompts. Keeps the "Hi Lou" personalization that's core to the daily-use UX, strips the surname (which is the identifiability concern), industry-standard for consumer wellness. Trivial escape hatch if we ever need to go stricter.
+- **Backend PATCH... er, DELETE returns `{success: true}` not the deleted row.** No data to return; the user is gone. Simpler endpoint contract.
+- **Double confirmation via dialog + text-input sheet** for delete account. Matches GitHub/Gmail. Password re-entry was offered as an option but rejected as overkill for a personal-use consumer app.
+- **Belt-and-suspenders approach to deletion**: storage cleanup explicit (not via cascade), auth delete triggers CASCADE on all 14 tables. If a future migration adds a new table without CASCADE, the explicit cleanup doesn't help — but that's a code review / schema review problem, not runtime.
+- **`docs/breach-response-plan.md` written as a full playbook rather than a bullet-point outline.** A bullet outline isn't useful in a real incident; a 6,000-word playbook with templates is.
+- **`docs/compliance-status.md` includes explicit legal-counsel TODO markers at every uncertain point.** Easier for a real lawyer to review a list of "here's what I'm uncertain about" than to re-audit from scratch.
+- **Migration error didn't roll back but the state was correct.** Didn't panic-fix. Verified via `pg_constraint` that the end state was what I wanted, then re-applied an idempotent version for migration-history hygiene.
+- **`.completeFileProtectionUntilFirstUserAuthentication` over `.completeFileProtection`** for chat history. Stricter protection would break background sync reads when the device is locked. The UAF variant is still a meaningful upgrade over the default.
+- **System prompt lab-disclaimer rule phrased as a hard rule** ("This is a hard rule — do not omit it even if the user has heard it before"). Claude tends to skip disclaimers it's given before; the "hard rule" framing is how you prevent that behavior.
+
+### Shipping
+- Backend commit `4b10895` — "Session 25 — health data compliance audit + fixes"
+- iOS commit `f38ba24` — "Session 25 — compliance: delete account, AI disclaimers, chat file protection, build 21"
+- Both repos pushed to `origin/main`
+- Backend deployed to Vercel prod
+- **TestFlight build 21 uploaded** via Xcode Organizer ("Vital 1.0.0 (21) uploaded" confirmed)
+
+### Status
+- Supabase RLS audit: **No changes needed — was already compliant**
+- TLS in transit audit: **No changes needed — was already compliant**
+- DB migration (FK CASCADE): **Complete, applied, verified**
+- Backend delete endpoint: **Complete, deployed**
+- AI PII minimization: **Complete, deployed**
+- AI lab disclaimer rule: **Complete, deployed**
+- Privacy policy corrections: **Complete, deployed**
+- Breach response plan: **First-draft template complete — needs legal counsel review**
+- Compliance status doc: **First-draft complete — needs legal counsel review**
+- iOS Delete Account flow: **Complete, shipped in build 21**
+- iOS AI disclaimers: **Complete, shipped in build 21**
+- iOS Labs disclaimer: **Complete, shipped in build 21**
+- iOS chat history file protection: **Complete, shipped in build 21**
+- TestFlight build 21: **Uploaded, processing in App Store Connect**
+
+### What's Next (critical path to App Store)
+
+**Must happen before any real submission** (ordered by risk):
+
+1. 🔴 **End-to-end test of Delete Account on a THROWAWAY account.** NOT on the real user account (`cb5ac280` / garvonious@gmail.com). The plan: create a test account via onboarding, populate with a meal / workout / supplement / chat message, verify the data lands in Supabase, run the delete flow, then query every health table + auth.users + avatars bucket to confirm everything is gone. This is the highest-risk unverified change in the session — the migration, endpoint, and iOS UI all compile and deploy cleanly but have not been end-to-end tested in a real runtime.
+
+2. 🔴 **Legal counsel review of `docs/compliance-status.md`, `docs/breach-response-plan.md`, and `/privacy` page.** All three are internal self-audit artifacts and must be validated by an attorney familiar with FTC HBNR, state breach notification laws, and App Store Review Guidelines. The docs explicitly flag this, but it bears repeating: **do not treat any of this as legal advice**.
+
+3. 🟡 Fill in contact list in `breach-response-plan.md` (legal counsel contact, cyber insurance, personal emergency contacts)
+
+4. 🟡 Set up monitoring/alerting before launch (Sentry for Vercel, Supabase Logflare, Anthropic spend alerts)
+
+**Everything else still open from prior sessions:**
+
+- Apple App Store Connect API "Request Access" (still deferred — 5-minute click)
+- App Store screenshots (biggest remaining bottleneck)
+- App Store description text (re-run clinical-language grep before writing)
+- Test onboarding with a fresh account
+- Submit to App Store
+
+**Session 25 verdict**: biggest compliance gaps closed. App is in a materially better regulatory posture than it was 4 hours ago. But we are not yet safe to submit — the delete flow is untested, the legal docs are unreviewed, and the submission blocker at this point is *verification* of what we built, not *building* more.
+
+---
+
 ## 2026-04-14 — Session 24
 
 Focused bug-fix session. Three user-reported issues from daily use of build 19, all fixed, tested on device, shipped as build 20 to TestFlight.

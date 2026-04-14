@@ -367,6 +367,79 @@
 - [ ] Submit to App Store
 - [ ] Test onboarding with a fresh account
 
+### Session 25 — Health data regulatory compliance audit + fixes
+
+#### Audit
+- [x] Full FTC HBNR / FTC Section 5 / FDA wellness / App Store 5.1.1(v) audit across both repos
+- [x] Confirmed Supabase RLS enabled on all 13 health tables with `auth.uid() = user_id` policies
+- [x] Confirmed TLS in transit everywhere (no `http://` URLs)
+- [x] Confirmed system prompt already had baseline FDA guardrails (never diagnose, defer to provider)
+- [x] Confirmed HealthKit usage descriptions are strong
+- [x] Confirmed no 3rd-party analytics capturing chat responses
+- [x] Confirmed no clinical language in marketing copy
+
+#### Database migration (blocker)
+- [x] `cascade_user_delete_on_health_tables` — added `ON DELETE CASCADE` foreign keys on all 14 health tables to `auth.users.id`. Zero orphans pre-migration. Idempotent via DO block with `pg_constraint` existence checks.
+- [x] Verified via pg_constraint query: all 14 tables now have CASCADE FKs
+
+#### Backend — account deletion (App Store 5.1.1(v) blocker)
+- [x] `src/lib/supabase.ts` — new `createAdminClient()` service-role helper
+- [x] `src/lib/data.ts` — new `deleteUserAccount(userId)` — cleans `avatars/{userId}.jpg` storage then `admin.auth.admin.deleteUser()` triggers the CASCADE chain
+- [x] `src/app/api/profile/route.ts` — new `DELETE` handler, Bearer + cookie auth support, `.message` error extraction
+- [x] Deployed to Vercel prod (`dpl_CVtHnsqibxLeTdJj9ebWKztcGf3S`)
+
+#### Backend — Claude API data flow minimization
+- [x] `src/lib/ai-context.ts` — new `firstNameOnly()` helper strips display_name to first whitespace-delimited token before Anthropic API
+- [x] `buildSystemPrompt` uses `firstNameOnly()` internally
+- [x] `buildHealthContext` removed `Name: ${p.display_name}` from the `## Profile` context block entirely
+- [x] Added file-level compliance comment block documenting every field that flows to Anthropic and every field that deliberately doesn't
+- [x] Added hard system-prompt rule: "When discussing any lab value that is flagged Borderline, Out of Range, or Critical, always close that part of your response with a one-sentence reminder to discuss the result with their healthcare provider"
+
+#### Backend — privacy policy corrections
+- [x] Corrected inaccurate Anthropic retention claim (was "not retained", now accurately "may be retained for up to 30 days for safety monitoring, not used to train models by default")
+- [x] Added FatSecret to third-party services list
+- [x] Added Oura Ring to third-party services list with explicit scope
+- [x] Added FTC Health Breach Notification commitment (60-day user notification, 500-user FTC + media threshold)
+- [x] Tightened retention language (explicit 30-day deletion window, "immediate, cascading, and irreversible")
+- [x] Expanded Data We Collect to cover lab PDF uploads, meal photos, supplement photos, chat history, Oura OAuth
+- [x] Updated Last Updated date to 2026-04-14
+
+#### Backend — new docs
+- [x] `docs/breach-response-plan.md` — full incident playbook with detection sources, triage checklist, credential rotation steps, user notification template (16 CFR 318.6 compliant), FTC HBNR workflow, state AG notification TODO, contact list template
+- [x] `docs/compliance-status.md` — per-requirement audit status report with every change linked, legal-counsel open-items list, cyber insurance recommendation
+
+#### iOS — Delete Account flow
+- [x] New `Vital/Views/Profile/DeleteAccountConfirmView.swift` — full-screen sheet with itemized data deletion list, type-DELETE-to-confirm text field, destructive button disabled until match
+- [x] `ProfileView.swift` — new Delete Account destructive button below Sign Out
+- [x] Confirmation dialog → `DeleteAccountConfirmView` sheet (double-confirm pattern)
+- [x] On success: `apiService.delete("/profile")` → `authService.signOut()` → ContentView routes back to LoginView
+
+#### iOS — FDA wellness disclaimers
+- [x] `ChatView.swift` — persistent one-line "Not medical advice. Tap for details." footer above input bar
+- [x] `ChatView.swift` — full disclaimer sheet with what-AI-can/can't-do, data flow note, 911 emergency callout
+- [x] `LabsView.swift` — static footer below lab categories reminding users to discuss flagged results with provider
+
+#### iOS — Data Protection
+- [x] `ChatHistoryManager.swift` — chat_history.json now written with `[.atomic, .completeFileProtectionUntilFirstUserAuthentication]` — unreadable by other apps, unreadable before first unlock after reboot, compatible with background sync
+
+#### Shipping
+- [x] Backend commit `4b10895` — pushed to origin
+- [x] Backend deployed to Vercel prod (READY)
+- [x] iOS commit `f38ba24` — pushed to origin
+- [x] CURRENT_PROJECT_VERSION bumped to 21
+- [x] **TestFlight build 21 uploaded** via Xcode Organizer
+
+### Pending from Session 25 (carry to next session)
+- [ ] **Legal counsel review of `docs/compliance-status.md` and `docs/breach-response-plan.md` and `/privacy` page** — all three are internal self-audit artifacts and must be reviewed by a qualified attorney before App Store submission
+- [ ] **End-to-end test of Delete Account flow on a throwaway account** — NOT on the real user account. Verify all 14 tables' rows + auth.users row + avatar are gone. HIGH priority before any real user trusts this.
+- [ ] Fill in contact list in `breach-response-plan.md` (legal counsel, cyber insurance, emergency contacts)
+- [ ] Set up monitoring/alerting (Sentry for Vercel, Supabase Logflare, Anthropic spend alerts)
+- [ ] Apple's App Store Connect API "Request Access" (still deferred — 5-minute click)
+- [ ] App Store screenshots
+- [ ] App Store description (re-run clinical-language grep before submitting)
+- [ ] Test onboarding with a fresh account
+- [ ] Submit to App Store
+
 ### Manual Data Entry
 - [x] Manual sleep logging — tap sleep card when empty → alert to enter hours
 - [x] Editable meal scan fields — name, type, macros all editable before saving
