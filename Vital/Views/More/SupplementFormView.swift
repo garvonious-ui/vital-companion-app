@@ -127,9 +127,11 @@ struct SupplementFormView: View {
                     }
                     .padding(16)
                 }
+                .dismissKeyboardOnDrag()
             }
             .navigationTitle(isEditing ? "Edit Supplement" : "Add Supplement")
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardToolbarDone()
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }

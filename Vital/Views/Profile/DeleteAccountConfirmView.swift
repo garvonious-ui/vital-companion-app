@@ -129,9 +129,11 @@ struct DeleteAccountConfirmView: View {
                 }
                 .padding(20)
             }
+            .dismissKeyboardOnDrag()
             .background(Brand.bg.ignoresSafeArea())
             .navigationTitle("Delete Account")
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardToolbarDone()
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }

@@ -119,6 +119,7 @@ struct WaterQuickAddView: View {
             }
             .navigationTitle("Water")
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardToolbarDone()
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") { dismiss() }

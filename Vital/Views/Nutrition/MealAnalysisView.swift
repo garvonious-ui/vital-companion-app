@@ -95,6 +95,7 @@ struct MealAnalysisView: View {
             }
             .navigationTitle("Scan Meal")
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardToolbarDone()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -219,6 +220,8 @@ struct MealAnalysisView: View {
                         .frame(height: 200)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                 }
+                // Note: dismissKeyboardOnDrag applied to the parent
+                // ScrollView at the modifier chain below.
 
                 confidenceBadge(result.confidence)
 
@@ -326,6 +329,7 @@ struct MealAnalysisView: View {
             }
             .padding()
         }
+        .dismissKeyboardOnDrag()
         .onAppear {
             // Pre-fill from analysis result
             mealName = result.mealName

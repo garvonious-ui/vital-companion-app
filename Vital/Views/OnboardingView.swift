@@ -98,6 +98,7 @@ struct OnboardingView: View {
                 .padding(.bottom, 32)
             }
         }
+        .keyboardToolbarDone()
     }
 
     // MARK: - Step 1: Basics
@@ -135,6 +136,7 @@ struct OnboardingView: View {
             }
             .padding(24)
         }
+        .dismissKeyboardOnDrag()
     }
 
     // MARK: - Step 2: Body + Goals
@@ -188,6 +190,7 @@ struct OnboardingView: View {
             }
             .padding(24)
         }
+        .dismissKeyboardOnDrag()
     }
 
     // MARK: - Step 3: Daily Targets
@@ -204,6 +207,7 @@ struct OnboardingView: View {
             }
             .padding(24)
         }
+        .dismissKeyboardOnDrag()
     }
 
     // MARK: - Helpers

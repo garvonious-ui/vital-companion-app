@@ -115,9 +115,11 @@ struct QuickLogView: View {
                     }
                     .padding(20)
                 }
+                .dismissKeyboardOnDrag()
             }
             .navigationTitle("Quick Log")
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardToolbarDone()
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }

@@ -544,9 +544,11 @@ struct AddExerciseView: View {
                     }
                     .padding(16)
                 }
+                .dismissKeyboardOnDrag()
             }
             .navigationTitle("Add Exercise")
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardToolbarDone()
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
@@ -751,9 +753,11 @@ struct WorkoutEditView: View {
                     }
                     .padding(20)
                 }
+                .dismissKeyboardOnDrag()
             }
             .navigationTitle("Edit Workout")
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardToolbarDone()
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }

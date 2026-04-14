@@ -54,6 +54,7 @@ struct WorkoutSessionView: View {
                             .padding(.top, 12)
                             .padding(.bottom, 24)
                         }
+                        .dismissKeyboardOnDrag()
                     }
                 }
 
@@ -63,6 +64,7 @@ struct WorkoutSessionView: View {
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardToolbarDone()
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("End") {

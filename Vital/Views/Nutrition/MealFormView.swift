@@ -175,9 +175,11 @@ struct MealFormView: View {
                     }
                     .padding(20)
                 }
+                .dismissKeyboardOnDrag()
             }
             .navigationTitle(isEditing ? "Edit Meal" : "Log Meal")
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardToolbarDone()
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }

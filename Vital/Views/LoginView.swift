@@ -100,6 +100,7 @@ struct LoginView: View {
                 Spacer()
             }
         }
+        .keyboardToolbarDone()
     }
 }
 

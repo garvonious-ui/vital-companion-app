@@ -47,6 +47,7 @@ struct ChatView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
                     }
+                    .dismissKeyboardOnDrag()
                     .onChange(of: conversation.messages.count) { _, _ in
                         if let last = conversation.messages.last {
                             withAnimation {
@@ -67,6 +68,7 @@ struct ChatView: View {
         }
         .navigationTitle("AI Health Chat")
         .navigationBarTitleDisplayMode(.inline)
+        .keyboardToolbarDone()
         .sheet(isPresented: $showDisclaimerSheet) {
             aiDisclaimerSheet
         }

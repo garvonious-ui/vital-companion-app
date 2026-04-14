@@ -180,6 +180,7 @@ struct FoodSearchView: View {
                             .padding(.horizontal, 16)
                             .padding(.top, 12)
                         }
+                        .dismissKeyboardOnDrag()
                     }
                 }
             }
@@ -192,6 +193,7 @@ struct FoodSearchView: View {
             }
             .navigationTitle("Search Foods")
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardToolbarDone()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -458,6 +460,7 @@ struct FoodSearchView: View {
             }
             .padding(.bottom, 24)
         }
+        .dismissKeyboardOnDrag()
     }
 
     // MARK: - Cart Bar
@@ -778,9 +781,11 @@ struct MealReviewView: View {
                     }
                     .padding(20)
                 }
+                .dismissKeyboardOnDrag()
             }
             .navigationTitle("Review Meal")
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardToolbarDone()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { dismiss() }

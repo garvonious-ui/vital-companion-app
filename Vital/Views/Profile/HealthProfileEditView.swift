@@ -71,9 +71,11 @@ struct HealthProfileEditView: View {
                 .padding(16)
                 .padding(.bottom, 80)
             }
+            .dismissKeyboardOnDrag()
         }
         .navigationTitle("Edit Health Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .keyboardToolbarDone()
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button {
