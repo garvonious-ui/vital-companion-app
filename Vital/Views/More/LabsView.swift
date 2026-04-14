@@ -135,6 +135,23 @@ struct LabsView: View {
                         ForEach(groupedResults, id: \.0) { category, labs in
                             categorySection(category: category, labs: labs)
                         }
+
+                        // Compliance disclaimer — wellness tracking only,
+                        // not clinical interpretation. FDA wellness-app
+                        // guardrail.
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "info.circle")
+                                .font(.caption2)
+                                .foregroundColor(Brand.textMuted)
+                            Text("Lab results in Vital are for informational tracking only. Discuss any flagged or out-of-range results with your healthcare provider. Vital is not a medical device and does not provide medical advice.")
+                                .font(.caption2)
+                                .foregroundColor(Brand.textMuted)
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Brand.card.opacity(0.5))
+                        .cornerRadius(10)
+                        .padding(.top, 8)
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 8)

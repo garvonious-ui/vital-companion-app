@@ -24,6 +24,7 @@
 		482167DBE1E4BFE145E8948B /* WaterQuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D0B47920B557F8962A90F7 /* WaterQuickAddView.swift */; };
 		4E3189299980475CEDF47604 /* MealFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 234C8B4F374F1A11E2A462BE /* MealFormView.swift */; };
 		5048CB1BBFF64D9FB41C93DD /* RefreshCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 867BBD3AEB0E52D6723B4A7A /* RefreshCoordinator.swift */; };
+		5101DA1D425E49B577CDB044 /* DeleteAccountConfirmView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02FDD4C82B9FA3AD6E6D84F4 /* DeleteAccountConfirmView.swift */; };
 		61B1EE2C30CD7785928F53FA /* HealthData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CA0976C5B54CDAB62C9964 /* HealthData.swift */; };
 		63D97D74849E03C0F076194D /* SparklineChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D4225B85291BA2AA157CA81 /* SparklineChart.swift */; };
 		63EDA6B453A78FA2D8C1162F /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3398576D292987F2B5FE4251 /* ImagePicker.swift */; };
@@ -67,6 +68,7 @@
 /* Begin PBXFileReference section */
 		007156F6AEE52F5471FAC5B5 /* SupplementFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplementFormView.swift; sourceTree = "<group>"; };
 		011D16B4E167D3A7522A591A /* WorkoutsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutsView.swift; sourceTree = "<group>"; };
+		02FDD4C82B9FA3AD6E6D84F4 /* DeleteAccountConfirmView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteAccountConfirmView.swift; sourceTree = "<group>"; };
 		058387F7BF756B77029CBF41 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		06149EE4656A31E0CDC26112 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		0B2E36B5835F23D569F5FAC2 /* SleepDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepDetailView.swift; sourceTree = "<group>"; };
@@ -154,6 +156,7 @@
 		37A601983F119E8FF79F0143 /* Profile */ = {
 			isa = PBXGroup;
 			children = (
+				02FDD4C82B9FA3AD6E6D84F4 /* DeleteAccountConfirmView.swift */,
 				81DA91D12D1CEA1BA42A24C8 /* HealthProfileEditView.swift */,
 				06149EE4656A31E0CDC26112 /* ProfileView.swift */,
 			);
@@ -390,6 +393,7 @@
 				C691307B8AC193BFA5D584C6 /* Config.swift in Sources */,
 				306C873F89DB17082AAEF7DB /* ContentView.swift in Sources */,
 				82D43C3B7B02A84FCB7E8B84 /* DashboardView.swift in Sources */,
+				5101DA1D425E49B577CDB044 /* DeleteAccountConfirmView.swift in Sources */,
 				8718F9EF3ED0F35F45C2327C /* DeviceSelectionView.swift in Sources */,
 				F282960C5925F88C336ECA79 /* DocumentPicker.swift in Sources */,
 				DFB81B3371584E5D355161C8 /* EmptyStateView.swift in Sources */,
@@ -562,7 +566,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Vital/Vital.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 21;
 				DEVELOPMENT_TEAM = A3W539C4C3;
 				INFOPLIST_FILE = Vital/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -583,7 +587,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Vital/Vital.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 21;
 				DEVELOPMENT_TEAM = A3W539C4C3;
 				INFOPLIST_FILE = Vital/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

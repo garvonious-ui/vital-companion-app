@@ -13,6 +13,7 @@ struct ChatView: View {
     @State private var pendingAction: ChatAction?
     @State private var actionExecuting = false
     @State private var actionResult: String?
+    @State private var showDisclaimerSheet = false
 
     init(existingConversation: ChatConversation?) {
         self.existingConversation = existingConversation
@@ -57,10 +58,18 @@ struct ChatView: View {
 
                 // Input bar
                 inputBar
+
+                // Compliance disclaimer — FDA wellness-app guardrail. Keeps
+                // the chat feature clearly outside Software as Medical Device
+                // territory. Tap the line to open the full disclaimer sheet.
+                disclaimerFooter
             }
         }
         .navigationTitle("AI Health Chat")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showDisclaimerSheet) {
+            aiDisclaimerSheet
+        }
         .onDisappear {
             streamTask?.cancel()
             // Save conversation if it has messages
@@ -196,6 +205,85 @@ struct ChatView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(Brand.bg)
+    }
+
+    // MARK: - Disclaimer Footer
+
+    private var disclaimerFooter: some View {
+        Button {
+            showDisclaimerSheet = true
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 10))
+                Text("Not medical advice. Tap for details.")
+                    .font(.system(size: 11))
+            }
+            .foregroundColor(Brand.textMuted)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(Brand.bg)
+        }
+    }
+
+    private var aiDisclaimerSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("About AI Health Chat")
+                        .font(.title2.weight(.bold))
+                        .foregroundColor(Brand.textPrimary)
+                        .padding(.top, 8)
+
+                    Text("Vital is a wellness tracking tool. It is not a medical device, and the AI health chat is not a substitute for professional medical advice, diagnosis, or treatment.")
+                        .font(.subheadline)
+                        .foregroundColor(Brand.textSecondary)
+
+                    Divider().background(Color.white.opacity(0.08))
+
+                    Group {
+                        Text("What the AI can do").font(.subheadline.weight(.semibold)).foregroundColor(Brand.textPrimary)
+                        Text("• Explain your health metrics in plain language\n• Highlight trends across your data\n• Suggest general lifestyle adjustments (sleep, nutrition, hydration, exercise)\n• Help you think through conversations with your provider")
+                            .font(.subheadline)
+                            .foregroundColor(Brand.textSecondary)
+                    }
+
+                    Group {
+                        Text("What the AI cannot do").font(.subheadline.weight(.semibold)).foregroundColor(Brand.textPrimary)
+                        Text("• Diagnose a medical condition\n• Recommend or adjust prescription medications\n• Replace care from your physician, specialist, or pharmacist\n• Interpret lab results in a clinical context — always discuss flagged or out-of-range results with your healthcare provider")
+                            .font(.subheadline)
+                            .foregroundColor(Brand.textSecondary)
+                    }
+
+                    Group {
+                        Text("Your data").font(.subheadline.weight(.semibold)).foregroundColor(Brand.textPrimary)
+                        Text("Chat messages and your recent health data are sent to Anthropic's Claude API to generate responses. See the Privacy Policy for full details.")
+                            .font(.subheadline)
+                            .foregroundColor(Brand.textSecondary)
+                    }
+
+                    Group {
+                        Text("If you think you're having a medical emergency, call 911 or your local emergency number immediately. Do not use Vital for emergency care.")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(Brand.critical)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Brand.critical.opacity(0.1))
+                            .cornerRadius(10)
+                    }
+                }
+                .padding(20)
+            }
+            .background(Brand.bg.ignoresSafeArea())
+            .navigationTitle("Disclaimer")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { showDisclaimerSheet = false }
+                        .foregroundColor(Brand.accent)
+                }
+            }
+        }
     }
 
     // MARK: - Send & Stream

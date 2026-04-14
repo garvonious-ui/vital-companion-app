@@ -13,6 +13,8 @@ struct ProfileView: View {
     @State private var isLoading = true
     @State private var showChat = false
     @State private var showSignOutConfirm = false
+    @State private var showDeleteAccountConfirm = false
+    @State private var showDeleteAccountSheet = false
     @State private var showWeightEdit = false
     @State private var weightInput: String = ""
     @State private var avatarImage: UIImage?
@@ -80,6 +82,21 @@ struct ProfileView: View {
                     Task { await authService.signOut() }
                 }
                 Button("Cancel", role: .cancel) {}
+            }
+            .confirmationDialog(
+                "Delete your account?",
+                isPresented: $showDeleteAccountConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Continue", role: .destructive) {
+                    showDeleteAccountSheet = true
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("You'll be asked to confirm by typing DELETE on the next screen. This cannot be undone.")
+            }
+            .sheet(isPresented: $showDeleteAccountSheet) {
+                DeleteAccountConfirmView()
             }
             .task(id: refreshCoordinator.refreshToken) {
                 // Single refresh source — fires on first appear and every
@@ -599,6 +616,28 @@ struct ProfileView: View {
                             .foregroundColor(Brand.critical)
                             .frame(width: 32, height: 32)
                         Text("Sign Out")
+                            .font(.subheadline)
+                            .foregroundColor(Brand.critical)
+                        Spacer()
+                    }
+                    .padding(14)
+                }
+
+                Divider().background(Color.white.opacity(0.06)).padding(.leading, 52)
+
+                // Delete account — App Store Guideline 5.1.1(v) requirement.
+                // Tap opens a confirmation dialog; Continue opens the
+                // double-confirm DeleteAccountConfirmView which requires the
+                // user to type DELETE before the destructive button activates.
+                Button {
+                    showDeleteAccountConfirm = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "trash.fill")
+                            .font(.body)
+                            .foregroundColor(Brand.critical)
+                            .frame(width: 32, height: 32)
+                        Text("Delete Account")
                             .font(.subheadline)
                             .foregroundColor(Brand.critical)
                         Spacer()
