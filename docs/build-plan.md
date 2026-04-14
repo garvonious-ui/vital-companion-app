@@ -316,8 +316,52 @@
 - [x] **TestFlight build 19 uploaded** via Xcode Organizer
 
 ### Pending from Session 23 (carry to next session)
+- [x] Click Apple's "Request Access" for App Store Connect API (still deferred)
+- [x] Test build 19 on device after App Store Connect processing finishes (superseded by build 20)
+- [ ] App Store screenshots
+- [ ] App Store description
+- [ ] Submit to App Store
+- [ ] Test onboarding with a fresh account
+
+### Session 24 — Meal scan swap, refresh race fix, workout edit
+#### Per-item food database swap in meal scan results
+- [x] MealAnalysisView — new magnifying-glass icon next to each detected item row
+- [x] `ItemSwapTarget: Identifiable` wrapper + `.sheet(item:)` for atomic index capture
+- [x] Opens FoodSearchView in selection mode (reuses Session 23 `onFoodSelected` callback — zero FoodSearchView changes)
+- [x] `applyFoodSelection(_:toItemAt:)` — replaces name + rounded-to-Int macros in place
+- [x] `recomputeTotalsFromItems()` — auto-updates top-level cal/protein/carbs/fat from sum of items
+- [x] X-delete also recomputes totals (was previously cosmetic-only)
+
+#### Today cold-launch refresh race
+- [x] Replaced `.task` + `.onChange(refreshToken)` + 3s manual debounce with single `.task(id: refreshCoordinator.refreshToken)` modifier
+- [x] TodayView — `.task(id:)` + removed `lastLoadTime` state + call sites (syncAndRefresh, saveSleep)
+- [x] ActivityView — same refactor
+- [x] ProfileView — same refactor
+- [x] SwiftUI's native per-id task cancellation replaces the manual debounce — no more post-sync bump eaten on cold launch
+
+#### Edit Quick Log / Manual workouts
+- [x] Backend — `updateWorkout(userId, id, patch)` in `src/lib/data.ts` (source and HR intentionally not patchable)
+- [x] Backend — `PATCH /api/workouts?id=...` handler with Session 22/23 `.message` error extraction
+- [x] Deployed to Vercel prod
+- [x] `APIService.patchRaw` extended to accept optional `queryItems` (matches DELETE signature)
+- [x] WorkoutDetailView — `let workout` → `@State currentWorkout` seeded from init so edits re-render in place
+- [x] All 14 body references renamed via replace_all
+- [x] `isEditable` computed property — only `source == "Manual" || source == "Quick Log"`
+- [x] Edit toolbar button (trailing, before Done) conditional on `isEditable`
+- [x] `onUpdated: ((Workout) -> Void)?` callback
+- [x] New `WorkoutEditView` struct (same file) — mirrors QuickLogView fields, `patchRaw` with raw dict, constructs updated Workout locally
+- [x] ActivityView — wired `onUpdated` to replace row in local `workouts` array (no refetch)
+
+#### Shipping
+- [x] Commit web dashboard changes (workouts PATCH endpoint + updateWorkout)
+- [x] Deploy backend to Vercel prod (target: production, READY)
+- [x] Commit iOS changes (bundled: meal scan swap + refresh race + workout edit)
+- [x] Bump `CURRENT_PROJECT_VERSION` to 20
+- [x] Both repos pushed to origin
+- [x] **TestFlight build 20 uploaded** via Xcode Organizer
+
+### Pending from Session 24 (carry to next session)
 - [ ] Click Apple's "Request Access" for App Store Connect API (still deferred)
-- [ ] Test build 19 on device after App Store Connect processing finishes
 - [ ] App Store screenshots
 - [ ] App Store description
 - [ ] Submit to App Store

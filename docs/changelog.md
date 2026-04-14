@@ -1,5 +1,148 @@
 # Changelog — Vital Companion App
 
+## 2026-04-14 — Session 24
+
+Focused bug-fix session. Three user-reported issues from daily use of build 19, all fixed, tested on device, shipped as build 20 to TestFlight.
+
+The user's exact report, in their words:
+> "Can we add the food database after a user takes a photo of a meal? when it doesnt get it correctly it makes it difficult to update the meal. Also after a night of sleep I am noticing that when I open the app it doesnt automatically refresh, I need to pull to refresh, then switch to another page and then go back to Today for the data to display. Also, I noticed that when you manually quick log a workout that you cannot edit the calories or duration, we need to make that editable."
+
+### Per-item food database swap in meal scan results
+
+Editable-item rows already existed from Session 9, but there was no way to reach the food database from the MealAnalysisView scan results screen. If Claude Vision saw "grilled chicken" as "rotisserie pork", the user had to manually type the correct name and correct all four macro fields.
+
+**Design fork resolved via AskUserQuestion:** whole-meal swap vs per-item swap vs both. User chose **per-item** — best when the scan gets most items right but one wrong, which matches the common failure mode.
+
+**Implementation** (`Vital/Views/Nutrition/MealAnalysisView.swift`):
+- New `ItemSwapTarget: Identifiable` wrapper with `UUID` id and Int index. Using `.sheet(item:)` instead of `.sheet(isPresented:)` + separate index state — same Session 22 atomic-capture pattern that fixed the meal edit stale-prefill bug.
+- New magnifying-glass button (`magnifyingglass.circle.fill`, Brand.accent) added to each `editableItemRow` HStack between the name TextField and the existing X delete button. Spacing bumped to 10pt.
+- `.sheet(item: $swapTarget)` presents `FoodSearchView(date:onSaved:onFoodSelected:)` in **selection mode** (the onFoodSelected parameter was added in Session 23 for the meal edit flow — zero FoodSearchView changes needed).
+- New `applyFoodSelection(_:toItemAt:)` helper — replaces the item's name with the composed "\(brand) \(foodName)" string when brand is present, otherwise just foodName. Converts `MealSelection`'s Double grams to Int via `.rounded()`. `MealItem` uses Int macros so the conversion is lossy but sub-gram precision doesn't matter and the UI already displays integers.
+- New `recomputeTotalsFromItems()` helper — sums the items array into the top-level `calories`/`protein`/`carbs`/`fat` TextFields. Called after every swap. **Also called after the X-delete** — previously the X delete was cosmetic-only because items were displayed but not summed back into the saved totals. Now the top-level totals that actually get saved always match the user's line-item edits.
+- The swap does NOT touch the top-level `mealName` field (still "Lunch" or whatever). Only line items change. Portion text is not updated (FoodSearchView's serving picker handles scaling before the callback fires).
+
+### Today cold-launch refresh race
+
+User reported that after overnight idle, reopening the app showed stale data until pull-to-refresh + tab-switch-and-back. Exploration via an Explore agent traced the exact code path and found a race between `MainTabView.task` (which runs `runBackgroundSync()` then bumps `refreshCoordinator.refreshToken`) and `TodayView.task` (which runs `loadData()` in parallel and sets `lastLoadTime = Date()`).
+
+**The bug chain:**
+1. Cold launch → both `.task`s fire in parallel
+2. `TodayView.task` → `await loadData()` → hits `/metrics` BEFORE HealthKit has pushed today's data → returns yesterday's data → sets `lastLoadTime = Date()`
+3. `MainTabView.task` → `await runBackgroundSync()` → HealthKit pushes today's data to Supabase → `refreshCoordinator.requestRefresh()` bumps token
+4. `TodayView.onChange(of: refreshToken)` fires → checks `Date().timeIntervalSince(lastLoadTime) > 3` → **fails** (lastLoadTime was just set 1-2s ago) → **silently skips the reload**
+5. Result: Today renders yesterday's data and never gets the fresh-data signal. User has to pull-to-refresh manually.
+
+The 3-second debounce was added in Session 10 to prevent double-fire between `.task` and the post-sync bump. It fixed the symptom at the time but introduced this latent bug: the bump and the task are always within a few seconds of each other, so the bump is always filtered out.
+
+**Fix (TodayView, ActivityView, ProfileView):**
+Replaced the `.task { loadData() }` + `.onChange(refreshToken)` + 3-second manual debounce pattern with a single `.task(id: refreshCoordinator.refreshToken)` modifier on all three tabs.
+
+```swift
+.task(id: refreshCoordinator.refreshToken) {
+    await loadData()
+    triggerAnimations()
+}
+```
+
+`.task(id:)`:
+- Fires on first appearance with the current token value
+- Re-fires on every `id` change, cancelling the previous task cleanly
+- Removes the race — the post-sync bump is guaranteed to re-trigger loadData with no debounce gate
+
+Also removed the `lastLoadTime` state var and all call sites (including `syncAndRefresh()` and `saveSleep()` in TodayView) since they're now dead.
+
+Two loads on cold launch are expected and acceptable:
+1. First `.task(id:)` fires with `refreshToken = 0` on view appear → possibly stale data (before HK sync)
+2. After MainTabView bumps to 1 post-sync → re-fires with fresh data
+
+The existing first-load-vs-refresh branching in `loadData()` (`let firstLoad = metrics.isEmpty`) means the second load doesn't flash a skeleton — the first load's data stays visible until the second load replaces it.
+
+### Edit Quick Log / Manual workouts
+
+`WorkoutDetailView` was entirely read-only for stats, so a mis-entered Quick Log (wrong calories or duration) could only be corrected via delete + re-add. Scope discipline: only Manual/Quick Log workouts editable — Apple Watch / Oura / Whoop / Garmin stay read-only because their values are authoritative from the source device (same design fork resolved via AskUserQuestion).
+
+**Backend** (`vital-health-dashboard`):
+- New `updateWorkout(userId, id, patch)` in `src/lib/data.ts` — builds a sparse `Record<string, unknown>` from the patch fields (`workoutName` → `workout_name`, etc.), runs `.update().eq("id", id).eq("user_id", userId)`. Returns void. `source` and heart rate fields are intentionally not patchable — `source` stays authoritative from the creation path, HR only exists on Apple Watch workouts which aren't editable anyway.
+- New `PATCH /api/workouts?id=...` handler in `route.ts` — mirrors the DELETE handler's shape (query param for id, body for patch fields). Session 22/23 `.message` error extraction pattern — no more `[object Object]` masking Supabase errors.
+- Deployed to Vercel prod (`target: "production"`, `readyState: "READY"`).
+
+**iOS API layer** (`Vital/Services/APIService.swift`):
+- Extended `patchRaw(_:jsonData:)` to accept an optional `queryItems: [URLQueryItem]? = nil` parameter. Matches the existing DELETE signature. Backwards compatible — existing call site in TodayView's `saveSleep()` passes no queryItems.
+
+**iOS WorkoutDetailView** (`Vital/Views/Workouts/WorkoutDetailView.swift`):
+- Converted `let workout: Workout` to `@State private var currentWorkout: Workout` seeded from an explicit `init(workout:onDeleted:onUpdated:)`. This lets the edit flow mutate the detail view's state in place after a successful PATCH — the user sees the updated values immediately without waiting for a parent reload.
+- All 14 body references renamed from `workout.` to `currentWorkout.` via `Edit(replace_all: true)`. `AddExerciseView` uses its own `workoutDate: String` let param and was untouched.
+- New `isEditable` computed: `source == "Manual" || source == "Quick Log"`.
+- New conditional "Edit" toolbar button (trailing, before "Done") gated on `isEditable`. Apple Watch / Oura / Whoop / Garmin workouts show only the Done button.
+- New `onUpdated: ((Workout) -> Void)?` callback prop.
+- New `.sheet(isPresented: $showEditSheet)` presenting `WorkoutEditView`. On save: `currentWorkout = updated; onUpdated?(updated)`.
+
+**New `WorkoutEditView` struct** (same file, below `AddExerciseView`):
+- Mirrors `QuickLogView`'s 8-option type grid + name/duration/calories/notes fields. Same `workoutTypes` array with the canonical DB values from Session 23's `expand_workout_types` migration.
+- Init seeds all `@State` text fields from the passed Workout.
+- `save()` builds a raw `[String: Any]` body (encoder-safe — no `.convertToSnakeCase` trap from Session 22) with backend camelCase field names. Calls `apiService.patchRaw("/workouts", jsonData:, queryItems: [URLQueryItem(name: "id", value: workout.id)])`.
+- Constructs the updated `Workout` locally from the old one + the patch fields. The server returns `{success: true}` with no data — returning the Supabase row directly would require another snake_case→camelCase mapping layer. Simpler: since iOS already has the old object + knows which fields changed, it can synthesize the new one without a round trip.
+- Calls `onSaved(updated)` then `dismiss()`.
+- Error state via `(error as? APIError)?.errorDescription ?? error.localizedDescription` (Session 23 pattern — exposes real server errors, not "error 8").
+
+**iOS ActivityView** (`Vital/Views/Activity/ActivityView.swift`):
+Wired `onUpdated` alongside the existing `onDeleted` in the `.sheet(item: $selectedWorkout)` closure. On update, finds the row in `workouts` by id and replaces it in place. No refetch, no tab-wide refresh, no RefreshCoordinator bump — the local array update is sufficient.
+
+### Files Created
+- (none — all extensions to existing files)
+
+### Files Modified (iOS)
+- `Vital/Services/APIService.swift` — `patchRaw` accepts optional `queryItems`
+- `Vital/Views/Nutrition/MealAnalysisView.swift` — `ItemSwapTarget` wrapper, swap button, sheet presentation, `applyFoodSelection`, `recomputeTotalsFromItems`, delete path now recomputes
+- `Vital/Views/Today/TodayView.swift` — `.task(id:)` refactor, removed `lastLoadTime` + all call sites
+- `Vital/Views/Activity/ActivityView.swift` — `.task(id:)` refactor, wired `onUpdated` alongside `onDeleted`
+- `Vital/Views/Profile/ProfileView.swift` — `.task(id:)` refactor, removed `lastLoadTime`
+- `Vital/Views/Workouts/WorkoutDetailView.swift` — `@State currentWorkout` via explicit init, `isEditable` gate, Edit toolbar button, edit sheet, `onUpdated` callback, new `WorkoutEditView` struct
+- `project.yml` — `CURRENT_PROJECT_VERSION` 19 → 20
+- `Vital.xcodeproj/project.pbxproj` — regenerated by xcodegen
+
+### Files Modified (Web Dashboard)
+- `src/lib/data.ts` — new `updateWorkout(userId, id, patch)`
+- `src/app/api/workouts/route.ts` — new `PATCH` handler, imports `updateWorkout`
+
+### Backend Deployments
+- Vercel prod deploy (`dpl_BewHv3wpxTSnyDsBp9xRBv1dvkpn`) — readyState READY, target production
+
+### Bugs Found
+- **3-second debounce in `.onChange(refreshToken)` was eating the post-sync bump on cold launch.** Added in Session 10 to prevent double-fire between `.task` and the post-sync bump — fixed the symptom but introduced the race. `.task(id:)` is the right primitive for this: it fires on first appear AND on every id change, with native per-id cancellation, no manual debounce required.
+- **X-delete in MealAnalysisView was cosmetic-only.** Items were displayed but never summed back into the saved totals, so deleting a wrong item left the top-level cal/protein/carbs/fat unchanged. Now every mutation (swap, delete) calls `recomputeTotalsFromItems()` so the saved totals always match the visible line items.
+- **SourceKit indexer persistent false positives.** Every edit to TodayView/ActivityView/ProfileView/WorkoutDetailView/MealAnalysisView triggered the same block of "Cannot find type 'APIService' in scope" warnings even though the types are in sibling files and xcodebuild compiled cleanly. These are stale indexer artifacts that don't affect the actual build. Ignored throughout the session.
+
+### Decisions
+- **Per-item swap over whole-meal swap** (user picked via AskUserQuestion) — best when the scan gets most items right but one wrong, which is the common failure mode. Whole-meal swap can be added later if needed.
+- **Manual + Quick Log editable only** (user picked via AskUserQuestion) — matches how most fitness apps work. Apple Watch/Oura/Whoop/Garmin stay read-only because their values are authoritative from the source device; edits would drift and risk being overwritten by the next sync.
+- **Backend PATCH returns `{success: true}` not the updated row.** The server would have to re-fetch via `.select().single()` (which returns snake_case) and map to camelCase. Simpler: iOS already has the old object + knows which fields it changed, so it synthesizes the new Workout locally and passes it to `onUpdated`. One round trip, no mapping layer.
+- **`@State currentWorkout` via explicit init over prop-as-source-of-truth.** Needed because the sheet-presented detail view has a `let workout` prop that can't be mutated. Holding local state seeded from the prop lets the edit flow update the UI in place before the parent list reload lands. Same pattern SwiftUI uses for editable details with parent-owned data.
+- **`.task(id:)` over `onChange + manual debounce`.** The native primitive handles cancellation correctly and removes the bug class entirely. Any time you find yourself writing "if enough time has passed since the last run, do it again", that's a `.task(id:)` waiting to happen.
+- **One bundled commit for iOS.** Three user-facing fixes but they're independent and low-risk. A split commit would add noise without reducing risk.
+
+### Shipping
+- Web dashboard commit `73dfef6` — "Workouts PATCH endpoint for editing Manual/Quick Log workouts"
+- iOS commit `53c23b7` — "Session 24 — meal scan swap, refresh race fix, workout edit, build 20"
+- Both repos pushed to `origin/main`
+- **TestFlight build 20 uploaded** via Xcode Organizer (App upload complete dialog confirmed: "Vital 1.0.0 (20) uploaded")
+
+### Status
+- Meal scan swap: **Complete, tested on device, shipped**
+- Today refresh race: **Complete, tested on device, shipped**
+- Workout edit: **Complete, tested on device, shipped**
+- Backend PATCH: **Deployed to Vercel prod**
+- TestFlight build 20: **Uploaded, processing in App Store Connect**
+
+### What's Next (for next session)
+1. **Click Apple's "Request Access" for App Store Connect API** — 5-minute click-through, unlocks fully scriptable TestFlight uploads. Still deferred.
+2. **App Store screenshots** — the real bottleneck to submission. Need 6.9" and 6.5" captures of Today, Activity, Workout detail, Nutrition, Profile, AI chat.
+3. **App Store description** — app name, subtitle, keywords, description copy, promo text, support URL.
+4. **Test onboarding with a fresh account** — catches anything the happy-path refactor missed.
+5. **Submit to App Store** — everything else is in place.
+
+---
+
 ## 2026-04-09/10 — Session 23
 
 Long session. Started with a user report that "the app is running much slower now, it's taking a lot of time to load pages, and sometimes it just stays in a loading state" and ended with TestFlight build 19 uploaded carrying a massive perf overhaul, the full Session 22 encoder-bug audit finally closed out, an animated splash screen, food database integration into the meal edit flow, workout delete, and a handful of cross-cutting UX fixes.
