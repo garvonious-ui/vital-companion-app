@@ -404,10 +404,22 @@ struct WorkoutDetailView: View {
 
     private func loadExercises() async {
         do {
-            let resp: APIResponse<[ExerciseLogEntry]> = try await apiService.get("/exercises?date=\(workoutDate)")
+            // IMPORTANT: pass the date via queryItems, NOT by embedding `?date=`
+            // in the path string. `URL.appendingPathComponent` (used inside
+            // APIService.buildRequest) percent-encodes `?` to `%3F`, producing
+            // a malformed URL like `/api/exercises%3Fdate=2026-04-14` which
+            // Next.js 404s. This bug silently swallowed every GET since the
+            // feature shipped — saves worked, but rows never showed up in the
+            // detail view. Session 27 root cause.
+            let resp: APIResponse<[ExerciseLogEntry]> = try await apiService.get(
+                "/exercises",
+                queryItems: [URLQueryItem(name: "date", value: workoutDate)]
+            )
             exercises = resp.data ?? []
         } catch {
-            // Non-critical
+            // Log rather than swallow silently — silent catches are how the
+            // Session 27 URL bug hid for this long.
+            print("[WorkoutDetailView] loadExercises failed: \(error)")
         }
         isLoadingExercises = false
     }
