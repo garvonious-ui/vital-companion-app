@@ -42,6 +42,16 @@ struct ProfileView: View {
         return "?"
     }
 
+    /// Extract the first whitespace-delimited token from a display_name.
+    /// Matches the TodayView greeting logic and the Session 25 compliance
+    /// decision: we never display (or transmit) the full name beyond the
+    /// first token. Returns nil only if the input is nil or empty/whitespace.
+    private func firstNameOnly(_ displayName: String?) -> String? {
+        guard let displayName else { return nil }
+        let first = displayName.components(separatedBy: .whitespaces).first ?? ""
+        return first.isEmpty ? nil : first
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -171,7 +181,10 @@ struct ProfileView: View {
                 }
             }
 
-            Text(profile?.name ?? "—")
+            // First name only — matches the TodayView greeting and the
+            // Session 25 compliance decision to never display or transmit
+            // the full display_name beyond first-whitespace-token.
+            Text(firstNameOnly(profile?.name) ?? "—")
                 .font(.title3.weight(.bold))
                 .foregroundColor(Brand.textPrimary)
 
