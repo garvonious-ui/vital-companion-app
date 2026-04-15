@@ -493,6 +493,24 @@
 - [ ] App Store description copy (app name, subtitle, keywords, promo text, long description, support URL, marketing URL)
 - [ ] Submit to App Store
 
+### Claude Sonnet 4 model deprecation (Anthropic email 2026-04-14)
+Anthropic is retiring `claude-sonnet-4` on **June 15, 2026 at 9AM PT**. Degraded availability starts **May 14, 2026** (~30 days from today). All 5 backend call sites currently pin `claude-sonnet-4-20250514` and need to upgrade to the next Sonnet generation before May 14.
+
+Affected files (all in `vital-health-dashboard/`):
+- `src/app/api/ai/chat/route.ts` — AI health chat (flagship feature)
+- `src/app/api/labs/parse/route.ts` — lab PDF/image parser
+- `src/app/api/nutrition/analyze-meal/route.ts` — meal photo analyzer
+- `src/app/api/supplements/analyze/route.ts` — supplement label scanner
+- `src/lib/claude.ts` — workout plan generator
+
+Work:
+- [ ] Check Anthropic's deprecation docs for the current recommended replacement model ID
+- [ ] Find/replace the model string in all 5 files (identical string everywhere — single sed or Edit with `replace_all`)
+- [ ] Smoke test each feature after deploy — especially the AI chat system prompt (Session 26 added a detailed RESPONSE FORMATTING section with bold headers + bullets + a concrete example; new model may interact differently with the instructions)
+- [ ] Deploy to Vercel prod
+- [ ] Monitor Anthropic console for error rate regression over the following day
+- Estimated scope: ~30-60 min. Low risk. Do this BEFORE App Store submission so the launch build has the post-deprecation model.
+
 ### Manual Data Entry
 - [x] Manual sleep logging — tap sleep card when empty → alert to enter hours
 - [x] Editable meal scan fields — name, type, macros all editable before saving
