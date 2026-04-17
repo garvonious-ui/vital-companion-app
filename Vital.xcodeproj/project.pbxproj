@@ -19,7 +19,6 @@
 		2A7616587AC02AF5E795E939 /* MetricDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D46C9D2EEE67FD860EA9269C /* MetricDetailView.swift */; };
 		2C8B787BBDB5CA3499CC8F45 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A505619541FE752606DD517 /* AuthService.swift */; };
 		306C873F89DB17082AAEF7DB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86AC6E545186B05588923B37 /* ContentView.swift */; };
-		34272EDAA3EFD6F99F86B001 /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 695F5E696F12D181D6A4AFFD /* MoreView.swift */; };
 		3850A7C17F91162718E074A5 /* CameraPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F1B423C74B0B70BC5C0B02 /* CameraPicker.swift */; };
 		388B58FA32782AAF6208DA25 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA86C9E18CF5593EEA2BC55 /* TodayView.swift */; };
 		482167DBE1E4BFE145E8948B /* WaterQuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D0B47920B557F8962A90F7 /* WaterQuickAddView.swift */; };
@@ -93,7 +92,6 @@
 		533791F1F8F3F49849EED2E9 /* Vital.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Vital.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		58BCF7A7CE62FA7F61B02947 /* ChatHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatHistoryView.swift; sourceTree = "<group>"; };
 		5FE808B66952FCB7F89CF796 /* SupplementsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplementsView.swift; sourceTree = "<group>"; };
-		695F5E696F12D181D6A4AFFD /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
 		6E0101990B2443858036D833 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		718093F3217EB8C9E568058A /* NutritionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionView.swift; sourceTree = "<group>"; };
 		7586B39AA3724352A53798C3 /* WorkoutDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutDetailView.swift; sourceTree = "<group>"; };
@@ -189,7 +187,6 @@
 				58BCF7A7CE62FA7F61B02947 /* ChatHistoryView.swift */,
 				A9C464C536715D7CD233F022 /* ChatView.swift */,
 				4A83C6F4F89F3B1447EE6310 /* LabsView.swift */,
-				695F5E696F12D181D6A4AFFD /* MoreView.swift */,
 				007156F6AEE52F5471FAC5B5 /* SupplementFormView.swift */,
 				3AFC49CCDA59865BC4C7D70B /* SupplementScanView.swift */,
 				5FE808B66952FCB7F89CF796 /* SupplementsView.swift */,
@@ -414,7 +411,6 @@
 				E8C5E7FC3EB83D965E3B51A6 /* MealAnalysisView.swift in Sources */,
 				4E3189299980475CEDF47604 /* MealFormView.swift in Sources */,
 				2A7616587AC02AF5E795E939 /* MetricDetailView.swift in Sources */,
-				34272EDAA3EFD6F99F86B001 /* MoreView.swift in Sources */,
 				DE6F438E0022C6D7F64EF535 /* NetworkMonitor.swift in Sources */,
 				83DB21F40AB3650F585440CA /* NutritionView.swift in Sources */,
 				ADDE2E207536AA76178EFCA6 /* OnboardingView.swift in Sources */,
