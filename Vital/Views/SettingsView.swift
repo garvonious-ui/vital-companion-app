@@ -157,7 +157,6 @@ struct SettingsView: View {
                     }
                     .listRowBackground(Brand.card)
 
-                    safariRow("Web Dashboard", url: "https://vital-health-dashboard.vercel.app")
                     safariRow("Privacy Policy", url: "https://vital-health-dashboard.vercel.app/privacy")
                     safariRow("Support", url: "mailto:lou@loucesario.com")
                 } header: {

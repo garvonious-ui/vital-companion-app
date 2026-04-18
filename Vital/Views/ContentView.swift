@@ -85,6 +85,7 @@ struct ContentView: View {
             DeviceSelectionView { selected in
                 deviceType = selected
                 UserDefaults.standard.set(selected.rawValue, forKey: deviceTypeKey)
+                UserDefaults.standard.set(Date(), forKey: "deviceSelectedAt")
             }
         } else if !profileChecked {
             // Invisible placeholder — splash is overlaid on top. The `.task`

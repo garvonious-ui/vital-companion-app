@@ -7,6 +7,9 @@ struct DeviceSelectionView: View {
     @State private var isRequestingHealthKit = false
     @State private var isConnectingOura = false
     @State private var errorMessage: String?
+    @State private var showHealthKitPrompt = false
+    @State private var pendingHealthKitDevice: DeviceType?
+    @State private var primerApproved = false
 
     let onComplete: (DeviceType) -> Void
 
@@ -41,7 +44,8 @@ struct DeviceSelectionView: View {
                             subtitle: "Syncs sleep, heart rate, HRV, steps, workouts via HealthKit",
                             color: Brand.accent
                         ) {
-                            Task { await connectAppleWatch() }
+                            pendingHealthKitDevice = .appleWatch
+                            showHealthKitPrompt = true
                         }
 
                         // Oura Ring
@@ -61,7 +65,8 @@ struct DeviceSelectionView: View {
                             subtitle: "Enable Apple Health sharing in your Whoop app first, then connect here",
                             color: Brand.optimal
                         ) {
-                            Task { await connectAppleWatch() }
+                            pendingHealthKitDevice = .appleWatch
+                            showHealthKitPrompt = true
                         }
 
                         // Just iPhone
@@ -71,7 +76,8 @@ struct DeviceSelectionView: View {
                             subtitle: "Basic step counting and distance from your phone's sensors",
                             color: Brand.textSecondary
                         ) {
-                            Task { await connectiPhone() }
+                            pendingHealthKitDevice = .iPhone
+                            showHealthKitPrompt = true
                         }
 
                         // No device
@@ -96,6 +102,22 @@ struct DeviceSelectionView: View {
                     Spacer()
                 }
             }
+        }
+        .sheet(
+            isPresented: $showHealthKitPrompt,
+            onDismiss: handlePrimerDismiss
+        ) {
+            HealthKitPrimerSheet(
+                onContinue: {
+                    primerApproved = true
+                    showHealthKitPrompt = false
+                },
+                onCancel: {
+                    primerApproved = false
+                    showHealthKitPrompt = false
+                }
+            )
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -140,6 +162,25 @@ struct DeviceSelectionView: View {
             )
         }
         .disabled(isRequestingHealthKit)
+    }
+
+    // Called after the primer sheet finishes dismissing. Deferring the
+    // HealthKit auth call here prevents iOS from dropping the native prompt
+    // when it would otherwise stack on top of an animating-away sheet.
+    private func handlePrimerDismiss() {
+        guard primerApproved, let device = pendingHealthKitDevice else {
+            pendingHealthKitDevice = nil
+            return
+        }
+        primerApproved = false
+        pendingHealthKitDevice = nil
+        Task {
+            if device == .iPhone {
+                await connectiPhone()
+            } else {
+                await connectAppleWatch()
+            }
+        }
     }
 
     private func connectAppleWatch() async {
@@ -217,6 +258,88 @@ class OuraAuthPresenter: NSObject, ASWebAuthenticationPresentationContextProvidi
             .compactMap { $0 as? UIWindowScene }
             .flatMap { $0.windows }
             .first { $0.isKeyWindow } ?? ASPresentationAnchor()
+    }
+}
+
+// MARK: - HealthKit Primer
+
+/// Educational screen shown immediately before iOS's HealthKit permission
+/// prompt. Apple's sheet shows every data-type toggle OFF by default and the
+/// app can't detect which toggles the user flipped — so users who tap "Allow"
+/// without flipping any on end up with zero permissions granted, and iOS won't
+/// re-show the prompt. This screen tells them to use "Turn On All" up front.
+private struct HealthKitPrimerSheet: View {
+    let onContinue: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        ZStack {
+            Brand.bg.ignoresSafeArea()
+
+            VStack(spacing: 20) {
+                Spacer().frame(height: 8)
+
+                Image(systemName: "heart.text.square.fill")
+                    .font(.system(size: 48))
+                    .foregroundColor(Brand.accent)
+
+                Text("One quick step")
+                    .font(.title2.weight(.bold))
+                    .foregroundColor(Brand.textPrimary)
+
+                Text("Apple will ask which health data to share with Vital.")
+                    .font(.subheadline)
+                    .foregroundColor(Brand.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+
+                // Callout card
+                VStack(spacing: 10) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(Brand.optimal)
+                        Text("Tap **Turn On All**")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(Brand.textPrimary)
+                        Spacer()
+                    }
+                    Text("Every toggle is OFF by default. If you skip this, Vital can't read any of your data and we can't show you a recovery score, workouts, or trends.")
+                        .font(.caption)
+                        .foregroundColor(Brand.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Brand.card)
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Brand.optimal.opacity(0.3), lineWidth: 1)
+                )
+                .padding(.horizontal, 20)
+
+                Spacer()
+
+                Button(action: onContinue) {
+                    Text("Continue")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Brand.accent)
+                        .cornerRadius(12)
+                }
+                .padding(.horizontal, 20)
+
+                Button(action: onCancel) {
+                    Text("Cancel")
+                        .font(.subheadline)
+                        .foregroundColor(Brand.textMuted)
+                }
+                .padding(.bottom, 12)
+            }
+            .padding(.top, 24)
+        }
     }
 }
 

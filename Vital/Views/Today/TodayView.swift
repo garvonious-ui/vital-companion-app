@@ -24,6 +24,31 @@ struct TodayView: View {
     @State private var animateMetrics = false
     @State private var animateCalories = false
     @State private var recoveryAnimationKey = UUID()
+    @State private var permissionsBannerDismissed = false
+
+    // MARK: - Permissions banner
+    //
+    // Shown when the user is on a HealthKit-path device (Apple Watch, Whoop,
+    // iPhone) but no metrics have arrived yet after the setup grace period.
+    // Apple's HealthKit prompt is one-shot — if the user tapped through
+    // without flipping toggles on, iOS won't re-prompt and data never syncs.
+    // This banner gives them a recovery path to iOS Settings.
+    private var shouldShowPermissionsBanner: Bool {
+        if permissionsBannerDismissed { return false }
+        if !metrics.isEmpty { return false }
+
+        let deviceRaw = UserDefaults.standard.string(forKey: "selectedDeviceType")
+        guard let raw = deviceRaw, let device = DeviceType(rawValue: raw) else { return false }
+        guard device.shouldSyncHealthKit else { return false }
+
+        // Grace period — 1 hour from device selection. Avoids flashing the
+        // banner while the first-ever sync is still in flight on setup.
+        if let selectedAt = UserDefaults.standard.object(forKey: "deviceSelectedAt") as? Date {
+            if Date().timeIntervalSince(selectedAt) < 3600 { return false }
+        }
+
+        return true
+    }
 
     private var todayDateString: String {
         formatDate(Date())
@@ -150,6 +175,11 @@ struct TodayView: View {
                                 .opacity(showContent ? 1 : 0)
                                 .animation(.easeOut(duration: 0.3).delay(0.05), value: showContent)
 
+                            if shouldShowPermissionsBanner {
+                                permissionsBanner
+                                    .transition(.opacity.combined(with: .move(edge: .top)))
+                            }
+
                             // Recovery card with verdict
                             recoveryCard
                                 .opacity(showContent ? 1 : 0)
@@ -262,6 +292,58 @@ struct TodayView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 8)
+    }
+
+    // MARK: - Permissions Banner
+
+    private var permissionsBanner: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.body)
+                .foregroundColor(Brand.warning)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Not seeing your health data?")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(Brand.textPrimary)
+
+                Text("Open iPhone Settings → Privacy & Security → Health → Vital and turn on every toggle.")
+                    .font(.caption)
+                    .foregroundColor(Brand.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    Text("Open Settings")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(Brand.accent)
+                }
+                .padding(.top, 2)
+            }
+
+            Spacer(minLength: 0)
+
+            Button {
+                HapticManager.light()
+                withAnimation { permissionsBannerDismissed = true }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption)
+                    .foregroundColor(Brand.textMuted)
+                    .padding(6)
+            }
+        }
+        .padding(14)
+        .background(Brand.card)
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Brand.warning.opacity(0.3), lineWidth: 1)
+        )
     }
 
     // MARK: - Recovery Card

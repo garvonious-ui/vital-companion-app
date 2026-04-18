@@ -20,6 +20,8 @@ struct ProfileView: View {
     @State private var avatarImage: UIImage?
     @State private var isUploadingPhoto = false
     @State private var showPhotoPicker = false
+    @State private var showDeviceSelection = false
+    @State private var safariURL: URL?
 
     // Trends
     private var last7Days: [DailyMetric] {
@@ -107,6 +109,21 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showDeleteAccountSheet) {
                 DeleteAccountConfirmView()
+            }
+            .sheet(isPresented: $showDeviceSelection) {
+                DeviceSelectionView { selected in
+                    UserDefaults.standard.set(selected.rawValue, forKey: "selectedDeviceType")
+                    UserDefaults.standard.set(Date(), forKey: "deviceSelectedAt")
+                    showDeviceSelection = false
+                }
+            }
+            .sheet(isPresented: Binding(
+                get: { safariURL != nil },
+                set: { if !$0 { safariURL = nil } }
+            )) {
+                if let url = safariURL {
+                    SafariView(url: url).ignoresSafeArea()
+                }
             }
             .task(id: refreshCoordinator.refreshToken) {
                 // Single refresh source — fires on first appear and every
@@ -597,8 +614,10 @@ struct ProfileView: View {
 
             VStack(spacing: 0) {
                 // Connected devices
-                Link(destination: URL(string: "https://vital-health-dashboard.vercel.app/settings/devices")!) {
-                    settingsRow(icon: "applewatch.and.arrow.forward", title: "Connected Devices", trailing: "arrow.up.right")
+                Button {
+                    showDeviceSelection = true
+                } label: {
+                    settingsRow(icon: "applewatch.and.arrow.forward", title: "Connected Devices", trailing: "chevron.right")
                 }
 
                 Divider().background(Color.white.opacity(0.06)).padding(.leading, 52)
@@ -613,7 +632,9 @@ struct ProfileView: View {
                 Divider().background(Color.white.opacity(0.06)).padding(.leading, 52)
 
                 // Privacy
-                Link(destination: URL(string: "https://vital-health-dashboard.vercel.app/privacy")!) {
+                Button {
+                    safariURL = URL(string: "https://vital-health-dashboard.vercel.app/privacy")
+                } label: {
                     settingsRow(icon: "hand.raised.fill", title: "Privacy Policy", trailing: "arrow.up.right")
                 }
 
