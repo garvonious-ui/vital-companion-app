@@ -504,12 +504,47 @@ Affected files (all in `vital-health-dashboard/`):
 - `src/lib/claude.ts` — workout plan generator
 
 Work:
-- [ ] Check Anthropic's deprecation docs for the current recommended replacement model ID
-- [ ] Find/replace the model string in all 5 files (identical string everywhere — single sed or Edit with `replace_all`)
-- [ ] Smoke test each feature after deploy — especially the AI chat system prompt (Session 26 added a detailed RESPONSE FORMATTING section with bold headers + bullets + a concrete example; new model may interact differently with the instructions)
-- [ ] Deploy to Vercel prod
+- [x] Check Anthropic's deprecation docs for the current recommended replacement model ID — `claude-sonnet-4-6` (no date suffix; verified via claude-api skill, cached 2026-04-15)
+- [x] Find/replace the model string in all 5 files — Session 27, one Edit per file, zero prefills/budget_tokens/output_format/tools to worry about
+- [ ] Smoke test each feature after deploy — AI chat, lab parse, meal scan, supplement scan, plan gen
+- [x] Deploy to Vercel prod — pushed 2026-04-18 as commit `76ab986`
 - [ ] Monitor Anthropic console for error rate regression over the following day
 - Estimated scope: ~30-60 min. Low risk. Do this BEFORE App Store submission so the launch build has the post-deprecation model.
+
+### Session 27 — Whoop tester bug, HealthKit primer, zero-data banner, Sonnet 4.6 (build 26)
+Driven by Matej (Whoop tester) signing up but seeing zero data — turned out he tapped through the HealthKit prompt without enabling any toggles, a known iOS one-shot failure mode. Also caught that ProfileView still had a live "Connected Devices" link to the web dashboard (Sessions 10/18 missed it).
+
+#### iOS — web-dashboard dead-end cleanup
+- [x] ProfileView "Connected Devices" now sheets `DeviceSelectionView` (was opening `/settings/devices` on the web)
+- [x] ProfileView "Privacy Policy" now opens in-app via `SafariView` (was opening `/privacy` on the web)
+- [x] SettingsView "Web Dashboard" row removed entirely
+- [x] `MoreView.swift` deleted — dead code since V2 tab restructure (zero refs in module), carried 3 more stale web links
+
+#### iOS — HealthKit primer sheet
+- [x] `HealthKitPrimerSheet` — one-screen education before iOS's permission prompt, explicit "Tap **Turn On All**" callout with explanation
+- [x] Gated behind Apple Watch / Whoop / iPhone buttons in `DeviceSelectionView`
+- [x] Uses `.sheet(onDismiss:)` pattern so `requestAuthorization()` fires only after the primer fully animates away (avoids stacked-modal drop)
+- [x] Oura path untouched — no HealthKit needed there
+
+#### iOS — zero-data recovery banner
+- [x] TodayView banner shown when user is on a HealthKit-path device, `metrics.isEmpty`, and >1hr since device selection (grace period)
+- [x] "Open Settings" button deep-links via `UIApplication.openSettingsURLString` (iOS doesn't expose a direct Settings → Health → Vital deep link)
+- [x] Dismissible per-session; reappears next launch if still empty
+- [x] `deviceSelectedAt` UserDefaults timestamp written in both `ContentView` (onboarding) and `ProfileView` (device change) to drive the grace period
+
+#### Shipping (Session 27)
+- [x] Backend commit `76ab986` — Sonnet 4.6 migration, pushed to origin
+- [x] iOS commit `ea617d1` — web-link cleanup + primer + banner
+- [x] iOS merge of `claude/naughty-saha-7c3e31` — MoreView deletion (spawned task from mid-session)
+- [x] iOS commit `c2f797c` — CURRENT_PROJECT_VERSION bumped 25 → 26, pbxproj regenerated
+- [x] Both repos pushed to origin
+- [ ] TestFlight build 26 uploaded via Xcode Organizer (Lou, after Vercel deploy is READY)
+
+### Pending from Session 27 (carry to next session)
+- [ ] Smoke-test Sonnet 4.6 across all 5 features (AI chat is the highest-signal — Session 26's RESPONSE FORMATTING prompt may interact differently on the new model)
+- [ ] Monitor Anthropic console for error rate regression over the following day
+- [ ] Watch for Matej's follow-up — he has build 25 without the primer; build 26 adds it
+- [ ] App Store description + submit — still the critical path
 
 ### Manual Data Entry
 - [x] Manual sleep logging — tap sleep card when empty → alert to enter hours

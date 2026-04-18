@@ -1,5 +1,150 @@
 # Changelog — Vital Companion App
 
+## 2026-04-17/18 — Session 27 (build 26)
+
+Session kicked off with Lou reporting a Whoop tester, Matej (`Devcicmatej7@gmail.com`), who had signed up, granted HealthKit access to Whoop, but was seeing zero data in Vital — AND kept "ending up at the web app dashboard." Lou suspected the web-link refs had all been removed in Sessions 10/18. They hadn't.
+
+### Diagnosis
+
+Three parallel queries — Supabase project lookup, Vercel log pull, and a grep for `vital-health-dashboard.vercel.app` references across the iOS codebase — surfaced the picture:
+
+1. **Matej's account is real and active.** Supabase `auth.users` showed him signed up 2026-04-17 21:52 UTC, profile created, `user_targets` populated (last step of onboarding), active session on build 25.
+2. **Zero rows in every health table.** `daily_metrics`, `workouts`, `exercise_log`, `nutrition_log`, `supplements` — all empty. `device_connections` also empty (not on Oura).
+3. **Zero POSTs to `/api/ingest/apple-health`** in Supabase API logs. HealthKit sync had never successfully uploaded anything for this user.
+4. **Five live web-dashboard links still in the iOS app**, in files the Session 10/18 cleanups missed:
+   - `ProfileView.swift:600` — "Connected Devices" row as a `Link()` to the web dashboard's `/settings/devices` page ← this was the dead-end Matej hit
+   - `ProfileView.swift:616` — Privacy Policy as an external `Link()` (should've been an in-app Safari sheet per Session 10)
+   - `SettingsView.swift:160` — "Web Dashboard" row
+   - `MoreView.swift:172, 263, 269` — three more web links, but `MoreView.swift` itself was dead code (the V2 tab restructure in Session 4 replaced it; zero references anywhere in the module)
+
+Lou followed up with Matej and confirmed: Matej had tapped "Whoop" in onboarding — which routes through `connectAppleWatch()` (HealthKit path) — but **tapped "Allow" on the iOS permissions sheet without flipping any of the per-metric toggles ON**. Apple's HealthKit prompt shows every toggle OFF by default, and the app can't detect which were flipped (privacy). Users who skip the toggles get zero permissions granted, and iOS won't re-show the prompt. He needed to go to Settings → Health → Vital and toggle them manually — except the "Connect Devices" link in the app routed him to the web dashboard instead.
+
+Three fixes, all shipped in build 26.
+
+### Fix 1 — web-dashboard dead-end cleanup (ProfileView + SettingsView + MoreView)
+
+**`Vital/Views/Profile/ProfileView.swift`** — the user-facing fix:
+
+- Replaced "Connected Devices" `Link(destination: .../settings/devices)` with a `Button` that sheets `DeviceSelectionView` (Matej never needs to leave the app to change his device)
+- Replaced "Privacy Policy" `Link` with a `Button` that sets `safariURL` → triggers an in-app `SafariView` sheet (reusing the wrapper defined at the bottom of `SettingsView.swift`)
+- Both new sheets follow the existing ProfileView sheet-style patterns — `.sheet(isPresented:)` + a nullable-URL binding pattern for Safari
+- Device-change flow writes `deviceType` to UserDefaults using the same `"selectedDeviceType"` key `ContentView` already owns, plus `deviceSelectedAt` (new key, drives the banner in Fix 3)
+
+**`Vital/Views/SettingsView.swift`** — deleted the "Web Dashboard" row entirely. The existing Privacy Policy and Support rows stay (already use `SafariView` / `mailto`).
+
+**`Vital/Views/More/MoreView.swift`** — spawned a separate task (`claude/naughty-saha-7c3e31`) that deleted the whole file, confirmed zero references via grep (`MoreView()`, `NavigationLink.*MoreView`, `MoreView.self` — all empty). Merged into main before the version bump. Net -326 lines.
+
+### Fix 2 — HealthKit primer sheet (DeviceSelectionView)
+
+Apple's HealthKit authorization prompt is a one-shot — `requestAuthorization()` only triggers the system sheet the first time for each set of permissions, and the app has no way to detect whether the user actually flipped toggles on. Matej is the second-worst case: tap "Allow" without flipping anything, and you get zero permissions with no recovery path except iOS Settings. (Worst case: tap "Don't Allow", which at least is unambiguous.)
+
+The primer sheet catches this before iOS's prompt fires. Flow:
+
+1. User taps Apple Watch / Whoop / iPhone in DeviceSelectionView
+2. `pendingHealthKitDevice` is set; `showHealthKitPrompt = true`
+3. `HealthKitPrimerSheet` appears — icon, title ("One quick step"), brief explanation, callout card in green with **"Tap Turn On All"** in bold and a one-paragraph note about why it matters, Continue + Cancel buttons
+4. On Continue, the sheet sets `primerApproved = true` and dismisses
+5. The sheet's `.onDismiss` handler fires `handlePrimerDismiss()`, which — only if `primerApproved` is true — kicks off the actual `connectAppleWatch()` or `connectiPhone()` call. This deferred pattern matters: iOS drops stacked modal presentations silently, so calling `requestAuthorization()` while the primer is still animating away would mean the HealthKit sheet never appears.
+
+The primer is inline in `DeviceSelectionView.swift` as a file-private `HealthKitPrimerSheet` struct. Oura path is untouched — no HealthKit needed there.
+
+### Fix 3 — zero-data recovery banner (TodayView)
+
+Even with the primer, users who tap through anyway need a visible recovery path. Added a dismissible yellow warning card at the top of TodayView (just below `headerSection`, above `recoveryCard`). Shown when all three of:
+
+- User is on a HealthKit-path device (`deviceType.shouldSyncHealthKit == true`, i.e. `.appleWatch` or `.iPhone`)
+- `metrics.isEmpty` (no rows for any day, not just today)
+- `Date.now.timeIntervalSince(deviceSelectedAt) > 3600` (grace period — don't flash it during first-launch sync race)
+
+The card says "Not seeing your health data?" with instructions to open Settings → Privacy & Security → Health → Vital and toggle everything on. "Open Settings" button uses `UIApplication.shared.open(UIApplication.openSettingsURLString)` — iOS doesn't expose a direct deep link to the Health app's per-app permissions pane (no public URL scheme for it), so this opens the main Settings app and the banner text names the path.
+
+Dismiss (X button) sets `permissionsBannerDismissed = true` as `@State` — session-local, not persisted. If the user dismisses but doesn't fix the underlying permissions, the banner reappears next launch. That's intentional — we want the permission state actually fixed, not the banner suppressed.
+
+Falsely-positive scenarios I checked:
+- Lou / existing users with months of data → `metrics.isEmpty` is false → banner never shows ✓
+- Oura users → `shouldSyncHealthKit` is false → banner never shows ✓
+- Skip-device users → `deviceType == .none` → `shouldSyncHealthKit` false → banner never shows ✓
+- Brand-new Apple Watch user during first sync race → grace period filters this ✓
+
+### Fix 4 — Claude Sonnet 4.6 migration (backend)
+
+Lou bundled this with the build because the May 14 Sonnet degraded-availability window was only 27 days out, and shipping one TestFlight build with two orthogonal changes halves the churn. Audited the five backend call sites (`api/ai/chat`, `api/labs/parse`, `api/nutrition/analyze-meal`, `api/supplements/analyze`, `lib/claude.ts`) against the Sonnet 4.6 migration gotchas from the `claude-api` skill:
+
+- ✅ No assistant message prefills (4.6 returns 400 on prefills; none of our code prefills — all last messages are user)
+- ✅ No `thinking` / `budget_tokens` (none of our code uses extended thinking)
+- ✅ No `output_format` (none of our code uses structured outputs — all use prose-returning-JSON prompts with `JSON.parse`)
+- ✅ No tool use (no tools defined anywhere; would need to audit JSON escaping otherwise)
+
+Audit was clean. Migration was a pure string swap: `"claude-sonnet-4-20250514"` → `"claude-sonnet-4-6"` (no date suffix — the skill is explicit that model IDs in the current model table are complete as-is). Grep after the swap confirmed zero lingering references.
+
+`npx tsc --noEmit` clean. Committed as `76ab986`, pushed to `origin/main`, Vercel auto-deployed.
+
+### Files Modified (iOS)
+- `Vital/Views/ContentView.swift` — write `deviceSelectedAt` on DeviceSelectionView onComplete
+- `Vital/Views/DeviceSelectionView.swift` — primer state vars, gate buttons behind primer, `.sheet(onDismiss:)` pattern, `handlePrimerDismiss()` helper, new `HealthKitPrimerSheet` struct
+- `Vital/Views/Profile/ProfileView.swift` — `showDeviceSelection` + `safariURL` state, two new sheets, rewire "Connected Devices" row to sheet, rewire "Privacy Policy" row to Safari, write `deviceSelectedAt` on device change
+- `Vital/Views/SettingsView.swift` — delete "Web Dashboard" row
+- `Vital/Views/Today/TodayView.swift` — `permissionsBannerDismissed` state, `shouldShowPermissionsBanner` computed gate, `permissionsBanner` view, insert in body after `headerSection`
+- `project.yml` — `CURRENT_PROJECT_VERSION` 25 → 26
+- `Vital.xcodeproj/project.pbxproj` — regenerated by xcodegen (also picks up MoreView deletion)
+
+### Files Deleted (iOS)
+- `Vital/Views/More/MoreView.swift` — dead code since V2 restructure, -326 lines
+
+### Files Modified (Web Dashboard)
+- `src/app/api/ai/chat/route.ts` — `claude-sonnet-4-6`
+- `src/app/api/labs/parse/route.ts` — `claude-sonnet-4-6`
+- `src/app/api/nutrition/analyze-meal/route.ts` — `claude-sonnet-4-6`
+- `src/app/api/supplements/analyze/route.ts` — `claude-sonnet-4-6`
+- `src/lib/claude.ts` — `claude-sonnet-4-6`
+
+### Backend Deployments
+- Vercel prod auto-deploy from commit `76ab986`
+
+### Bugs Found
+- **Session 10 + 18 "remove web-dashboard refs" only hit text/strings.** Structural `Link(destination: URL(...))` call sites survived in `ProfileView.swift`, `SettingsView.swift`, and `MoreView.swift`. The only way to be sure these are gone is a grep for the actual URL string across the app, not for the word "web dashboard". Worth adding to the pre-submission checklist.
+- **HealthKit primer flicker fix via `onDismiss`.** First draft of the primer fired `connectAppleWatch()` directly in the Continue button's closure. That races iOS's modal dismissal — the HealthKit system prompt would try to present on top of a still-animating-away sheet and iOS silently drops it (no error, no prompt). The `.sheet(onDismiss:)` pattern with a `primerApproved` bool guarantees the HealthKit call only fires after the primer is fully gone.
+- **`URL.openSettingsURLString` opens Settings → Vital, NOT Settings → Health → Vital.** iOS doesn't expose a direct deep link to the Health app's per-app permissions pane. Best we can do is open Settings in general and put the navigation path in the banner text. This is an iOS limitation, not a fixable bug.
+- **SourceKit indexer noise ignored throughout the session.** Every iOS edit triggered a block of "Cannot find type X" false-positives; past sessions documented this exact behavior with `xcodebuild` compiling cleanly. Trusting the pattern — no real errors introduced.
+
+### Decisions
+- **Bundle backend Sonnet migration with iOS UX fixes into one TestFlight build (build 26).** The changes are orthogonal but deploying separately costs two TestFlight cycles. Low risk. Lou authorized.
+- **Session-local banner dismissal, not persistent.** If the user dismisses without fixing permissions, the banner comes back on next launch. Intentional — we want the underlying state fixed. Persistent dismissal would actively harm users who tap dismiss out of frustration.
+- **Primer fires for every HealthKit-path device, including re-selections from ProfileView.** The ProfileView device-change sheet uses the same `DeviceSelectionView`, so it gets the same primer. An existing user switching from Oura → Apple Watch should see the primer too — their HealthKit permissions have never been requested.
+- **Ship `MoreView` deletion as a merge commit, not a squash.** Spawned task work gets its own commit in the graph, which documents that the deletion was mechanical rather than part of the primer work.
+- **Skip Info.plist manual edits.** Session 22 fixed the version templating so `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` propagate through `$(…)` templates — just the `project.yml` bump + `xcodegen generate` does it cleanly.
+
+### Shipping
+- Backend commit `76ab986` — pushed to `origin/main`, Vercel auto-deployed
+- iOS commit `ea617d1` — web-link cleanup + primer + banner, pushed
+- iOS merge `claude/naughty-saha-7c3e31` — MoreView deletion
+- iOS commit `c2f797c` — version bump 25 → 26 + pbxproj regen, pushed
+- Both repos at `origin/main`
+- TestFlight build 26 — **NOT YET UPLOADED** (archive + Xcode Organizer upload is a Lou step)
+
+### Status
+- Web-link dead-ends: **Fixed and pushed**
+- HealthKit primer: **Shipped in build 26**
+- Zero-data banner: **Shipped in build 26**
+- MoreView dead code: **Deleted**
+- Sonnet 4.6 migration: **Deployed to Vercel prod; smoke test pending**
+- TestFlight build 26: **Code ready, archive + upload pending (Lou)**
+
+### What's Next (for Lou immediately after this session)
+1. Confirm Vercel prod deploy is READY (usually ~60s after push)
+2. Smoke test AI chat via build 25 in TestFlight — verifies Sonnet 4.6 is serving responses cleanly, especially the Session 26 formatting prompt
+3. Archive + upload build 26 via Xcode Organizer
+4. Watch for Matej's follow-up on build 26 — the primer is the test of whether this fixes the class of bug
+
+### What's Next (for next session)
+1. Monitor Anthropic console for error rate regression over the 24h after the Sonnet deploy
+2. Test full onboarding with a fresh account (still-pending carry from Session 24)
+3. Test Delete Account flow on a throwaway account (still-pending carry from Session 25)
+4. App Store description copy + screenshots finalization
+5. Submit to App Store
+
+---
+
 ## 2026-04-14 — Session 26 (iteration day: builds 22–25)
 
 Session 25 wrapped early afternoon with TestFlight build 21. The rest of the day was a rapid-fire iteration loop driven by Lou's daily use of the app and a real App Store screenshot capture session. Four more builds shipped (22, 23, 24, 25), three of them real bug fixes and one a polish pass. Plus the full screenshot review and the App Store Connect compliance wizard walkthrough.
